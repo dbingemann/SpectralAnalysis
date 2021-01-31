@@ -135,7 +135,7 @@ server <- function(input, output, session) {
                 # there is a file
                 loadSpectrum <- input$loadSpectrum
                 fileID <- loadSpectrum$name
-                if (substr(fileID, nchar(fileID)-4, nchar(fileID)) == ".csv") {
+                if (substr(fileID, nchar(fileID)-3, nchar(fileID)) == ".csv") {
                     pathName <- loadSpectrum$datapath
                     spectraInput <- enlightenSpectra(fileName = basename(pathName),
                                                      filePath = dirname(pathName))
