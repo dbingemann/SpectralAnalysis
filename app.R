@@ -33,7 +33,7 @@ ui <- fluidPage(
         style = "margin:10px"),
     
     # Application title
-    h1("Validation of Raman Model"),
+    h1("Application of Spectral Model"),
     
     br(),
     
