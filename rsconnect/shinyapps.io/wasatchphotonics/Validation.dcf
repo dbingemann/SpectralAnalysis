@@ -1,0 +1,12 @@
+name: Validation
+title: Validation
+username:
+account: wasatchphotonics
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3550806
+bundleId: 4163639
+url: https://wasatchphotonics.shinyapps.io/Validation/
+when: 1612107086.6051
+asMultiple: FALSE
+asStatic: FALSE
