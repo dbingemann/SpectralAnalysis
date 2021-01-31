@@ -4,29 +4,13 @@
 # set to TRUE if all echo output is desired
 
 require(tidyverse)
-#require(knitr)
-#require(pracma)
-#require(openxlsx)
 require(colorspace)
-#require(RColorBrewer)
-#require(reshape2)
-#require(prospectr)
-#require(scales)
 
 # new colors as of 18 June 2019 - set to marketing standard
 WasatchColor <- RGB(R = 66, G = 142, B = 181)
 WasatchColorHex <- "#428eb5"
 plotGrey <- "#808285"
-# typeFont <- "Museo Sans Rounded 500"
 typeFont <- "Calibri"
-
-
-# require(extrafont)
-
-# I think we only need to run this once ever...
-# font_import(paths = NULL, recursive = TRUE, prompt = TRUE,pattern = NULL)
-# font_import(prompt=FALSE, paths = "C:\\Windows\\Fonts", pattern = "calibri")
-# loadfonts(device = "win")
 
 sysinfo <- Sys.info()
 
