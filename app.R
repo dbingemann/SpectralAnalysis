@@ -54,7 +54,9 @@ ui <- fluidPage(
             
             # load a file
             fileInput(inputId = "loadSpectrum", 
-                      "Select Enlighten File to Load", accept = ".csv"),
+                      "Select Enlighten CSV File to Load", 
+                      multiple = FALSE,
+                      accept = c(".csv", "text/csv", "text/comma-separated-values")),
             
             br(),
             
@@ -133,12 +135,19 @@ server <- function(input, output, session) {
                 # there is a file
                 loadSpectrum <- input$loadSpectrum
                 fileID <- loadSpectrum$name
-                pathName <- loadSpectrum$datapath
-                spectraInput <- enlightenSpectra(fileName = basename(pathName),
-                                                 filePath = dirname(pathName))
+                if (substr(fileID, nchar(fileID)-4, nchar(fileID)) == ".csv") {
+                    pathName <- loadSpectrum$datapath
+                    spectraInput <- enlightenSpectra(fileName = basename(pathName),
+                                                     filePath = dirname(pathName))
+                } else {
+                    # random walk as made up filler
+                    fileID <- "Incorrect File Type"
+                    spectraInput <- data.frame(x = seq(100),
+                                               y = cumsum(rnorm(100)))
+                }
             } else {
                 # random walk as made up filler
-                fileID <- "Random Walk"
+                fileID <- "No File Provided"
                 spectraInput <- data.frame(x = seq(100),
                                            y = cumsum(rnorm(100)))
             }
