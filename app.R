@@ -22,6 +22,13 @@ modelNames <- getModelNames()
 modelList[modelNames] <- modelNames
 
 
+# get tuning parameters from analysis functions
+# can be NULL
+tuningParametersList <- getModelParameters()
+tuningParameterNames <- names(tuningParametersList)
+tuningParameters <- unlist(tuningParametersList)
+
+
 # Define UI for application that draws a histogram
 ui <- fluidPage(
 
@@ -70,7 +77,11 @@ ui <- fluidPage(
             selectInput(inputId = "singleModel", 
                         h5("Select Single Model to Apply"), 
                         choices = modelList,
-                        selected = 1)
+                        selected = 1),
+
+            # if there are parameters add another UI section
+            uiOutput("parameter_conditional")
+
         ),
 
         # Show a plot of the generated distribution
@@ -87,6 +98,32 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
+    
+    
+    # add UI portion for parameter input
+    output$parameter_conditional <- renderUI({
+        
+        if (length(tuningParametersList) == 0) {
+            # ignore section
+            return()
+        } else {
+            tuningPanel <- tagList(
+                br(),
+                h4("Parameters to Use"))    
+                
+            for (index in seq_along(tuningParametersList) ) {
+                inputLabel <- paste("parameter", index, sep = ".")
+                tuningPanel <- tagAppendChild(tuningPanel,
+                    textInput(inputLabel,
+                              names(tuningParametersList)[index],
+                              value = as.character(tuningParametersList[[index]]))
+                )
+            }
+            return(tuningPanel)
+        }        
+    })
+    
+    
     
     # periodically poll file folders
     pollingDelay <- 1000 # ms
@@ -199,7 +236,22 @@ server <- function(input, output, session) {
         } else {
             models <- input$singleModel
         }
-        results <- doAnalysis(spectrum$Spectrum, models)
+        
+        if (length(tuningParametersList) == 0) {
+            results <- doAnalysis(spectrum$Spectrum, models)
+        } else {
+            for (index in seq_along(tuningParametersList)) {
+                inputLabel <- paste("parameter", index, sep = ".")
+                if (! is.null(input[[inputLabel]])) {
+                    # first time around the input field does not exist yet
+                    tuningParameters[index] <- input[[inputLabel]]
+                }
+            }
+            tuningParametersList <- list(tuningParameters)
+            results <- doAnalysis(spectrum$Spectrum, 
+                                  models, tuningParametersList)
+        }
+        
     
 
         for (index in seq_along(results)) {
