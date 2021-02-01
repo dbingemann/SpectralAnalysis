@@ -10,5 +10,7 @@ This app monitors the most recent folder with a data stamp for the most recent f
 
 The app then performs an analysis as specified by the user. Typically, this is the application of a chemometric model, if multiple models are available, the user can chose between them, or apply all at once. The analysis results are displayed below the spectrum.
 
+For some analysis model tuning parameters might be useful. those can also be defined and are added to the user interface.
+
 ![Screen Shot](https://github.com/dbingemann/SpectralAnalysis/blob/main/doc/ScreenShot.png)
 
