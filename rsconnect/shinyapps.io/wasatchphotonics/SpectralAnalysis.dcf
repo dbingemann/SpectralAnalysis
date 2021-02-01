@@ -1,0 +1,13 @@
+name: SpectralAnalysis
+title: SpectralAnalysis
+username:
+account: wasatchphotonics
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3559241
+bundleId: 4167225
+url: https://wasatchphotonics.shinyapps.io/SpectralAnalysis/
+when: 1612188964.30406
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: README.md|script.cmd|VBscript.vbs|doc/ScreenShot.png|doc/Spectral Analysis App Update.mp4
