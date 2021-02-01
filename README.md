@@ -12,5 +12,5 @@ The app then performs an analysis as specified by the user. Typically, this is t
 
 For some analysis model tuning parameters might be useful. those can also be defined and are added to the user interface.
 
-![Screen Shot](https://github.com/dbingemann/SpectralAnalysis/blob/main/doc/ScreenShot.png)
+![Screen Shot](https://github.com/dbingemann/SpectralAnalysis/blob/main/doc/ScreenShotWithTuning.png)
 
