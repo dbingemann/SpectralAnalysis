@@ -356,7 +356,7 @@ predictSIMCA <- function(simcaModel, newSpectra, alphaLevel = 0.05) {
 ###############################
 
 
-plotPCAscores <- function(PCAresults, components) {
+plotPCAscores <- function(PCAresults, components, printPlot = TRUE) {
     
     #
     #   Plots scores
@@ -368,7 +368,7 @@ plotPCAscores <- function(PCAresults, components) {
     scoresDF <- data.frame(x = c(scores[, components[1]]),
                            y = c(scores[, components[2]]))
     
-    ggplot(data = scoresDF,
+    scorePlot <- ggplot(data = scoresDF,
            mapping = aes(x = x, y = y)) + 
         geom_point(alpha = 0.6, color = WasatchGreen) + 
         WasatchTheme + 
@@ -377,11 +377,16 @@ plotPCAscores <- function(PCAresults, components) {
         ylab(paste("PC", components[2])) + 
         theme(aspect.ratio = 1)
     
+    if (printPlot) {
+        print(scorePlot)
+    }
+    return(scorePlot)
 }
 
 
 
-plotPCAcenter <- function(PCAresults) {
+plotPCAcenter <- function(PCAresults, printPlot = TRUE) {
+    
     centerArray <- PCAresults$center
     centerDF <- data.frame(x = seq_along(centerArray),
                            y = centerArray)
@@ -391,7 +396,7 @@ plotPCAcenter <- function(PCAresults) {
     #   input PCA results
     #
     
-    ggplot(data = centerDF,
+    centerPlot <- ggplot(data = centerDF,
            mapping = aes(x = x, y = y)) + 
         geom_line(alpha = 0.8, color = WasatchGreen) + 
         WasatchTheme + 
@@ -399,11 +404,16 @@ plotPCAcenter <- function(PCAresults) {
         xlab(paste("x")) + 
         ylab(paste("y"))
     
+    if (printPlot) {
+        print(centerPlot)
+    }
+    return(centerPlot)
 }
 
 
 
-plotSIMCAdist <- function(d_Scores, d_Orthogonal, thresholdSD = NA, thresholdOD = NA) {
+plotSIMCAdist <- function(d_Scores, d_Orthogonal, thresholdSD = NA, 
+                          thresholdOD = NA, printPlot = TRUE) {
     
     #
     #   plots distances for SIMCA
@@ -429,19 +439,24 @@ plotSIMCAdist <- function(d_Scores, d_Orthogonal, thresholdSD = NA, thresholdOD 
         distPlot <- distPlot + geom_vline(xintercept = thresholdSD, color = plotGrey, alpha = 0.4)
     }
     
-    print(distPlot)
+    if (printPlot) {
+        print(distPlot)
+    }    
+    return(distPlot)
 }
 
 
 
-plotSIMCAnormDist <- function(h, v, h_threshold = NA, v_threshold = NA) {
-    distDF <- data.frame(x = h,
-                         y = v)
+plotSIMCAnormDist <- function(h, v, h_threshold = NA, v_threshold = NA, 
+                              printPlot = TRUE) {
+    
     #
     # Plots a square distance, normalized to h0 and v0
     # input: square distances h and v, as well as scale h0 and v0
     #
     
+    distDF <- data.frame(x = h,
+                         y = v)
     
     distPlot <- ggplot(data = distDF,
                        mapping = aes(x = x, y = y)) + 
@@ -460,7 +475,10 @@ plotSIMCAnormDist <- function(h, v, h_threshold = NA, v_threshold = NA) {
         distPlot <- distPlot + geom_vline(xintercept = h_threshold, 
                                           color = plotGrey, alpha = 0.4)
     }
-    print(distPlot)
+    if (printPlot) {
+        print(distPlot)
+    }
+    return(distPlot)
 }
 
 
@@ -469,7 +487,7 @@ plotSIMCAnormDist <- function(h, v, h_threshold = NA, v_threshold = NA) {
 
 plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
                       modelPlotType = c("center", "scores", "distances"), 
-                      alphaLevel = 0.05) {
+                      alphaLevel = 0.05, printPlot = TRUE) {
     
     #
     #   plots model results (if no prediction is given) - pick one form
@@ -480,33 +498,7 @@ plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
     #       distances - uses thresholds from prediciton alpha, ignores input
     #
     
-    
-    if (! is.null(simcaModel)) {
-        # plot model
-        if (modelPlotType == "center") {
-            PCAresults <- simcaModel$PCAresults
-            plotPCAcenter(PCAresults)
-        } else if (modelPlotType == "scores") {
-            PCAresults <- simcaModel$PCAresults
-            plotPCAscores(PCAresults, components = c(1,2))
-        } else {
-            d_Scores <- simcaModel$scoreDistances
-            d_Orthogonal <- simcaModel$orthogonalDistances
-            thresholds <- thresholdsSIMCA(simcaModel, alphaLevel)
-            thresholdSD <- thresholds$thresholdSD
-            thresholdOD <- thresholds$thresholdOD
-            plotSIMCAdist(d_Scores, d_Orthogonal, thresholdSD, thresholdOD)
-        }
-    } 
-    
-    if (! is.null(prediction)) {
-        # plot prediction
-        d_Scores <- prediction$scoreDistances
-        d_Orthogonal <- prediction$orthogonalDistances
-        thresholdSD <- prediction$thresholdSD
-        thresholdOD <- prediction$thresholdOD
-        plotSIMCAdist(d_Scores, d_Orthogonal, thresholdSD, thresholdOD)
-    }
+    distPlot <- NULL
     
     if ((! is.null(prediction)) & (! is.null(simcaModel))) {
         # combine model (train) and test in one
@@ -534,11 +526,44 @@ plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
             theme(aspect.ratio = 1) + 
             geom_hline(yintercept = thresholdOD, color = plotGrey, alpha = 0.4) +
             geom_vline(xintercept = thresholdSD, color = plotGrey, alpha = 0.4)
-
-        print(distPlot)
+        
+        if (printPlot) {
+            print(distPlot)
+        }
+        
+    } else {
+    
+        if (! is.null(simcaModel)) {
+            # plot model
+            if (modelPlotType == "center") {
+                PCAresults <- simcaModel$PCAresults
+                plotPCAcenter(PCAresults)
+            } else if (modelPlotType == "scores") {
+                PCAresults <- simcaModel$PCAresults
+                plotPCAscores(PCAresults, components = c(1,2))
+            } else {
+                d_Scores <- simcaModel$scoreDistances
+                d_Orthogonal <- simcaModel$orthogonalDistances
+                thresholds <- thresholdsSIMCA(simcaModel, alphaLevel)
+                thresholdSD <- thresholds$thresholdSD
+                thresholdOD <- thresholds$thresholdOD
+                distPlot <- plotSIMCAdist(d_Scores, d_Orthogonal, thresholdSD, 
+                                          thresholdOD, printPlot)
+            }
+        } 
+        
+        if (! is.null(prediction)) {
+            # plot prediction
+            d_Scores <- prediction$scoreDistances
+            d_Orthogonal <- prediction$orthogonalDistances
+            thresholdSD <- prediction$thresholdSD
+            thresholdOD <- prediction$thresholdOD
+            distPlot <- plotSIMCAdist(d_Scores, d_Orthogonal, thresholdSD, 
+                                      thresholdOD, printPlot)
+        }
         
     }
-    
+    return(distPlot)
 }
 
 
