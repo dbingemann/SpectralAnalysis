@@ -37,6 +37,18 @@ preProcessing <- function(spectraInput, parameters) {
     # should be checked in simca model prediciton - is preProc same as in model calc?
     # 
     
+    #
+    # Parameters:
+    #
+    #       # parameter for Savitzki Golay
+    #           windowHalfWidth <- 4
+    #           derivOrder <- 1
+    #           polynomialSG <- 2
+    #
+    #       ## Scaling
+    #           startWavenumber <- 300  
+    #
+    
     
     # ID string will be added as "attr" to output
     versionString <- "SIMCA preProc - 10FEB2021 - interpol. to 1 1/cm - SG 1st derivative: w=9, p=2 - range(300,2000) - SNV scaling"
@@ -45,11 +57,14 @@ preProcessing <- function(spectraInput, parameters) {
     require(prospectr)
     
     # parameter for Savitzki Golay
-    windowHalfWidth <- 4
-    derivOrder <- 1
-    polynomialSG <- 2
+    windowHalfWidth <- parameters$windowHalfWidth
+    derivOrder <- parameters$derivOrder
+    polynomialSG <- parameters$polynomialSG
     
-    spectraCols <- grep(pattern = "[pP]rocessed", names(spectraInput))
+    nonSpectraCols <- c("[pP]ixel", "[wW]avelength", "[wW]avenumber")
+    spectraCols <- which(! apply(sapply(nonSpectraCols, function(x) {
+                                            grepl(pattern = x, names(spectraInput)) }),
+                                    MARGIN = 1, FUN = any) )
     
     spectraCombinedDerivList <- list()
     index <- 0
@@ -60,7 +75,7 @@ preProcessing <- function(spectraInput, parameters) {
     for (spectrumCol in spectraCols) {
         
         index <- index + 1
-        spectrum <- spectraInput[, spectrumCol]
+        spectrum <- unlist(spectraInput[, spectrumCol])
         
         spectrumSG <- savitzkyGolay(spectrum, 
                                     m = derivOrder,  # order
@@ -82,7 +97,7 @@ preProcessing <- function(spectraInput, parameters) {
     
     ## Scaling
     
-    startWavenumber <- 300  
+    startWavenumber <- parameters$startWavenumber  
     
     spectraCombinedDerivNorm <- spectraCombinedDeriv %>%
         filter(Wavenumber > startWavenumber) %>%
@@ -102,10 +117,7 @@ preProcessing <- function(spectraInput, parameters) {
                           pull(DerivativeSNV),
                       nrow = numPixels)
     
-    colnames(spectra) <- spectraCombinedDerivNorm %>% 
-        filter(Pixel == first(Pixel)) %>%
-        mutate(Label = paste("Spectrum", SpectrumID, sep = ".")) %>%
-        pull(Label)
+    colnames(spectra) <- (names(spectraInput))[spectraCols]
     
     minPixel <- min(spectraCombinedDerivNorm$Pixel)
     
