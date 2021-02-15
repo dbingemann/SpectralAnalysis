@@ -356,7 +356,7 @@ predictSIMCA <- function(simcaModel, newSpectra, alphaLevel = 0.05) {
 ###############################
 
 
-plotPCAscores <- function(PCAresults, components, printPlot = TRUE) {
+plotPCAscores <- function(PCAresults, components, printPlot = FALSE) {
     
     #
     #   Plots scores
@@ -385,7 +385,7 @@ plotPCAscores <- function(PCAresults, components, printPlot = TRUE) {
 
 
 
-plotPCAcenter <- function(PCAresults, printPlot = TRUE) {
+plotPCAcenter <- function(PCAresults, printPlot = FALSE) {
     
     centerArray <- PCAresults$center
     centerDF <- data.frame(x = seq_along(centerArray),
@@ -413,7 +413,7 @@ plotPCAcenter <- function(PCAresults, printPlot = TRUE) {
 
 
 plotSIMCAdist <- function(d_Scores, d_Orthogonal, thresholdSD = NA, 
-                          thresholdOD = NA, printPlot = TRUE) {
+                          thresholdOD = NA, printPlot = FALSE) {
     
     #
     #   plots distances for SIMCA
@@ -448,7 +448,7 @@ plotSIMCAdist <- function(d_Scores, d_Orthogonal, thresholdSD = NA,
 
 
 plotSIMCAnormDist <- function(h, v, h_threshold = NA, v_threshold = NA, 
-                              printPlot = TRUE) {
+                              printPlot = FALSE) {
     
     #
     # Plots a square distance, normalized to h0 and v0
@@ -487,7 +487,7 @@ plotSIMCAnormDist <- function(h, v, h_threshold = NA, v_threshold = NA,
 
 plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
                       modelPlotType = c("center", "scores", "distances"), 
-                      alphaLevel = 0.05, printPlot = TRUE) {
+                      alphaLevel = 0.05, printPlot = FALSE) {
     
     #
     #   plots model results (if no prediction is given) - pick one form
