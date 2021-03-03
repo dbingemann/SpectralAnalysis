@@ -17,9 +17,13 @@ currentFile <- getCurrentFile()
 
 
 # get model names from analysis functions
-modelList <- list()
 modelNames <- getModelNames()
-modelList[modelNames] <- modelNames
+modelNameList <- list()
+modelNameList[modelNames] <- modelNames
+
+# also get actual 
+modelList <- list()
+modelList[modelNames] <- getModels(modelNames)
 
 
 # get tuning parameters from analysis functions
@@ -76,7 +80,7 @@ ui <- fluidPage(
             # single model
             selectInput(inputId = "singleModel", 
                         h5("Select Single Model to Apply"), 
-                        choices = modelList,
+                        choices = modelNameList,
                         selected = 1),
 
             # if there are parameters add another UI section
@@ -238,7 +242,7 @@ server <- function(input, output, session) {
         }
         
         if (length(tuningParametersList) == 0) {
-            results <- doAnalysis(spectrum$Spectrum, models)
+            results <- doAnalysis(spectrum$Spectrum, models, modelList)
         } else {
             for (index in seq_along(tuningParametersList)) {
                 inputLabel <- paste("parameter", index, sep = ".")
@@ -249,7 +253,8 @@ server <- function(input, output, session) {
             }
             tuningParametersList <- list(tuningParameters)
             results <- doAnalysis(spectrum$Spectrum, 
-                                  models, tuningParametersList)
+                                  models, modelList, 
+                                  tuningParametersList)
         }
         
     

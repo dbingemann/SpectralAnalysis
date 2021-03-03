@@ -8,6 +8,46 @@
 #############################################################
 
 
+############################
+#
+# Parameters
+#
+############################
+
+
+
+
+simcaParameters <- function() {
+    
+    #
+    # some 'global' setting for SIMCA
+    # analysis: preProcessing, SIMCAcomp
+    #   'global' values will be used in 'analysis' 
+    #   if no preProcessing parameters are provided (default = NULL)
+    # prediction:
+    #   'global' alphaLevel will be used is no value is provided to alpha level (default - NULL)
+    
+    # SIMCA
+    pickComponents <- 3
+    alphaLevel <- 1e-5
+    
+    # preprocessing settings
+    # parameters for preprocessing: interpolation, SG, min wavenumber
+    preProcessingParameters <- list(interpSpacing = 1,
+                                    startWavenumber = 300,
+                                    endWavenumber = 1800,
+                                    windowHalfWidth = 4,
+                                    derivOrder = 1,
+                                    polynomialSG = 2)
+    
+    parameters <- list(SIMCAcomp = pickComponents,
+                       alphaLevel = alphaLevel,
+                       preProcessingParameters = preProcessingParameters)
+    
+    return(parameters)
+    
+}
+
 
 
 
@@ -18,9 +58,31 @@
 ############################
 
 
+# we add a few points to avoid out of range error
+# we do not need this yet...
+
+require(pracma)
+
+interp <- function(x, y, xi) {
+    if (xi[1] < x[1]) {
+        # extrapolate
+        y0 <- y[1] # - (x[1]-xi[1]) * (y[2]-y[1])/(x[2]-x[1])
+        x <- c(xi[1], x)
+        y <- c(y0, y)
+    }
+    ni <- length(xi)
+    n <- length(x)
+    if (xi[ni] > x[n]) {
+        # extrapolate
+        yn <- y[n] # + (xi[ni]-x[n]) * (y[n]-y[ni])/(x[n]-x[n-1])
+        x <- c(x, xi[ni])
+        y <- c(y, yn)
+    }
+    return(interp1(x = x, y = y, xi = xi))
+}
 
 
-preProcessing <- function(spectraInput, parameters) {
+preProcessing <- function(spectraInput, preProcessingParameters) {
     
     #
     # Preprocessing Function
@@ -38,28 +100,65 @@ preProcessing <- function(spectraInput, parameters) {
     # 
     
     #
-    # Parameters:
+    # Parameters: - for this version
+    #
+    #       # interpolation: 
+    #           interpolSpacing <- 1
+    #       
+    #       # range:
+    #           startWavenumber <- 300  
+    #           endWavenumber <- 1800
     #
     #       # parameter for Savitzki Golay
     #           windowHalfWidth <- 4
     #           derivOrder <- 1
     #           polynomialSG <- 2
     #
-    #       ## Scaling
-    #           startWavenumber <- 300  
     #
     
-    
     # ID string will be added as "attr" to output
-    versionString <- "SIMCA preProc - 10FEB2021 - interpol. to 1 1/cm - SG 1st derivative: w=9, p=2 - range(300,2000) - SNV scaling"
+    functionString <- "SIMCA preProc"
+    versionDate <- "02MAR2021"
+    interpolString <- "interpolation: yes"
+    preProcessingString1 <- "Range Trimming Start"
+    preProcessingString2 <- "Range Trimming End"
+    preProcessingString3 <- "SG 1st derivative"
+    preProcessingString4 <- "SNV scaling"
+    parameterString <-  paste(names(preProcessingParameters), preProcessingParameters, 
+                              sep = ": ", collapse = " | ")
+        
+    versionString <- paste(functionString,
+                       versionDate,
+                       interpolString,
+                       preProcessingString1,
+                       preProcessingString2,
+                       preProcessingString3,
+                       preProcessingString4,
+                       parameterString, sep = " - ")
     
     # Savitzi Golay
     require(prospectr)
     
+    # parameter for interpolation
+    interpSpacing <- preProcessingParameters$interpSpacing
+    
+    
     # parameter for Savitzki Golay
-    windowHalfWidth <- parameters$windowHalfWidth
-    derivOrder <- parameters$derivOrder
-    polynomialSG <- parameters$polynomialSG
+    windowHalfWidth <- preProcessingParameters$windowHalfWidth
+    derivOrder <- preProcessingParameters$derivOrder
+    polynomialSG <- preProcessingParameters$polynomialSG
+    
+    # parameter for trimming
+    startWavenumber <- preProcessingParameters$startWavenumber 
+    endWavenumber <- preProcessingParameters$endWavenumber
+    
+    
+    # for interpolation
+    wavenumberCol <- grep(pattern = "[wW]avenumber", x = names(spectraInput))
+    wavenumbers <- unlist(spectraInput[, wavenumberCol])
+
+    interpWavenumbers <- seq(startWavenumber, endWavenumber, by = interpSpacing)
+    interpPixels <- seq(length(interpWavenumbers))
     
     nonSpectraCols <- c("[pP]ixel", "[wW]avelength", "[wW]avenumber")
     spectraCols <- which(! apply(sapply(nonSpectraCols, function(x) {
@@ -76,8 +175,11 @@ preProcessing <- function(spectraInput, parameters) {
         
         index <- index + 1
         spectrum <- unlist(spectraInput[, spectrumCol])
+        interpSpectrum <- interp(x = wavenumbers,
+                                 y = spectrum,
+                                 xi = interpWavenumbers)
         
-        spectrumSG <- savitzkyGolay(spectrum, 
+        spectrumSG <- savitzkyGolay(interpSpectrum, 
                                     m = derivOrder,  # order
                                     p = polynomialSG,  # polynomial fit
                                     w = 2 * windowHalfWidth + 1) # window
@@ -87,8 +189,8 @@ preProcessing <- function(spectraInput, parameters) {
         derivative <- c(zeroPadding, spectrumSG, zeroPadding)
         
         spectraCombinedDerivList[[index]] <- data.frame(SpectrumID = index,
-                                                        Pixel = pixels,
-                                                        Wavenumber = spectraInput$Wavenumber,
+                                                        Pixel = interpPixels,
+                                                        Wavenumber = interpWavenumbers,
                                                         Derivative = derivative)  
         
     }
@@ -97,10 +199,8 @@ preProcessing <- function(spectraInput, parameters) {
     
     ## Scaling
     
-    startWavenumber <- parameters$startWavenumber  
     
     spectraCombinedDerivNorm <- spectraCombinedDeriv %>%
-        filter(Wavenumber > startWavenumber) %>%
         group_by(SpectrumID) %>%
         mutate(DerivativeSNV = Derivative / sd(Derivative)) %>%
         ungroup()
@@ -138,12 +238,30 @@ preProcessing <- function(spectraInput, parameters) {
 #   
 #############################
 
+analysisSIMCA <- function(spectraInput, preProcessingParameters = NULL, SIMCAcomp = 2) {
+    #
+    # wrapper to call SIMCA model calc with not pre-processed Enlighten spectra
+    #
+    
+    # allow for global settings
+    if (is.null(preProcessingParameters)) {
+        # get global values form start of file
+        parameters <- simcaParameters()
+        preProcessingParameters <- parameters$preProcessingParameters
+        SIMCAcomp <- parameters$SIMCAcomp
+    }
+    
+    spectra <- preProcessing(spectraInput, preProcessingParameters)
+    simcaModel <- analysisSIMCApreProcessed(spectra, SIMCAcomp, preProcessingParameters)
+    return(simcaModel)
+}
 
-analysisSIMCA <- function(spectra, SIMCAcomp = 2) {
+
+analysisSIMCApreProcessed <- function(spectra, SIMCAcomp = 2, preProcessingParameters) {
     
     #
     #   performs SIMCA analysis
-    #   input: spectra in matrix format - pixels going down rows
+    #   input: pre-processed spectra in matrix format - pixels going down rows
     #           spectra contain attr for preprocessing
     #   output: simca model results as a list
     #
@@ -152,6 +270,7 @@ analysisSIMCA <- function(spectra, SIMCAcomp = 2) {
     
     preProcessing <- attr(spectra, "preProcessing")
     simcaModel[["preProcessing"]] <- preProcessing
+    simcaModel[["preProcessingParameters"]] <- preProcessingParameters
     
     # PCA
     X <- t(spectra)
@@ -202,11 +321,12 @@ analysisSIMCA <- function(spectra, SIMCAcomp = 2) {
     # get orthogonal variance   
     v_SIMCA <- rowSums(Xdiff^2)
     v0 <- mean(v_SIMCA)
+    logNormWidth <- sd(v_SIMCA/v0)
     
     
     simcaModel[["orthogonalDistances"]] <- orthogonalDistances
     simcaModel[["meanOrthogonalDistanceSquared"]] <- v0
-    
+    simcaModel[["logNormWidthOrthogonalDistancesSquaredNorm"]] <- logNormWidth
     
     return(simcaModel)
     
@@ -226,6 +346,7 @@ thresholdsSIMCA <- function(simcaModel, alphaLevel = 0.05) {
     
     SIMCAcomp <- simcaModel$SIMCAcomp
     v0 <- simcaModel$meanOrthogonalDistanceSquared
+    logNormWidth <- simcaModel$logNormWidthOrthogonalDistancesSquaredNorm
     
     # confidence - in plane
     confLevelSD <- confLevel
@@ -234,7 +355,7 @@ thresholdsSIMCA <- function(simcaModel, alphaLevel = 0.05) {
     
     # confidence - orthogonal
     confLevelOD <- confLevel
-    v_threshold <- exp(v0 * qnorm(confLevelOD))
+    v_threshold <- exp(qnorm(confLevelOD, sd = logNormWidth))
     thresholdOD <- sqrt(v0 * v_threshold)
     
     thresholds <- list(alphaLevel = alphaLevel,
@@ -287,9 +408,26 @@ loadSIMCA <- function(fileName) {
 ###############################
 
 
+predictSIMCA <- function(simcaModel, newSpectraInput, alphaLevel = NULL) {
+    #
+    # wrapper to call pre processing from Enlighten Spectra, then predict
+    #
+    
+    if (is.null(alphaLevel)) {
+        parameters <- simcaParameters()
+        alphaLevel <- parameters$alphaLevel
+    }
+    
+    # get rest of parameters from model
+    preProcessingParameters <- simcaModel$preProcessingParameters
+    newSpectra <- preProcessing(newSpectraInput, preProcessingParameters)
+    predictions <- predictSIMCApreProcessed(simcaModel, newSpectra, alphaLevel)
+    return(predictions)
+}
 
 
-predictSIMCA <- function(simcaModel, newSpectra, alphaLevel = 0.05) {
+
+predictSIMCApreProcessed <- function(simcaModel, newSpectra, alphaLevel = 0.05) {
     
     
     # input = SIMCA model - list format
@@ -302,6 +440,7 @@ predictSIMCA <- function(simcaModel, newSpectra, alphaLevel = 0.05) {
     #
     # also: preprocessing adds a preprocressing ID string in the attributed of matrix
     #
+    # returns both distances for each spectrum, also assignment (yes/no), and thresholds used
     
     
     
@@ -326,7 +465,8 @@ predictSIMCA <- function(simcaModel, newSpectra, alphaLevel = 0.05) {
     SIMCAvariances <- simcaModel$SIMCAvariances
     
     # Maha Distance
-    SIMCAscoresSquared <- scoresSIMCA[, SIMCArange]^2
+    # make sur eit stays a matrix - hence the drop = FALSE for single spectrum
+    SIMCAscoresSquared <- (scoresSIMCA[, SIMCArange, drop=FALSE])^2
     d_Scores <- sqrt(rowSums(t(t(SIMCAscoresSquared) / SIMCAvariances)))
     
     
@@ -335,7 +475,7 @@ predictSIMCA <- function(simcaModel, newSpectra, alphaLevel = 0.05) {
     
     loadingsSIMCA <- pcaSIMCA$rotation
     
-    Xhat <- scoresSIMCA[, SIMCArange] %*% t(loadingsSIMCA[, SIMCArange])
+    Xhat <- scoresSIMCA[, SIMCArange, drop=FALSE] %*% t(loadingsSIMCA[, SIMCArange, drop=FALSE])
     Xhat <- scale(Xhat, center = -mu, scale = FALSE)
     Xdiff <- X - Xhat
     d_Orthogonal <- sqrt(rowSums(Xdiff^2))

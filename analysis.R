@@ -40,39 +40,73 @@
 #
 #
 
+source("SIMCAfunctions.R")
+
+# read model names
 getModelNames <- function() {
     # can be a single model name
-    return( c("Model 1", "Model 2", "Model 3") )
+    modelFileNames <- dir(path = "./Models")
+    modelNames <- str_remove(modelFileNames, "\\.[a-zA-Z0-9]+$")
+    return( modelNames )
 }
 
 
+# load all models
+getModels <- function(modelNames) {
+    models <- list()
+    modelPath <- "./Models"
+    for (modelName in modelNames) {
+        fileName <- paste0(modelPath, "/", modelName, ".Rdat")
+        models[[modelName]] <- loadSIMCA(fileName)
+    }
+    return(models)
+}
+
+
+# tuning parameters
 getModelParameters <- function() {
     # can be NULL if adjustment panel is not desired
 #    return(NULL)
-#    return( list(Threshold = 0.95) )
-    return( list(Threshold = 0.95, Dimension = 2) )
+    return( list(Threshold = 0.95) )
+#    return( list(Threshold = 0.95, Dimension = 2) )
 }
 
 
-doAnalysis <- function(spectrumInput = NULL, models = NULL, parameters = NULL) {
+doAnalysis <- function(spectrumInput = NULL, 
+                       modelNames = NULL,   # names only
+                       modelList = NULL,       # actual models
+                       tuningParameters = NULL) {
+    
     if (is.null(spectrumInput)) {
         returnList <- list(Result = "No Data File")
     } else {
-        if (is.null(models)) {
-            returnList <- list(Result = "No Models Provided")
-        } else {
+        if (is.null(modelNames)) {
+            returnList <- list(Result = "No Model Names Provided")
+        } else {         
+            if (is.null(modelList)) {
+                returnList <- list(Result = "No Models Provided")
+            } else {
             # we have everything!
-            returnList <- list()
-            modelIndex <- 0
-            for (analysisModel in models) {
-                returnList[[analysisModel]] <- 
-                    list(Model = analysisModel,
-                         unlist(parameters),
-                                   Min = min(spectrumInput$Processed),
-                                   Max = max(spectrumInput$Processed),
-                                   Result = "Pass")
+                returnList <- list()
+                for (modelName in modelNames) {
+                    # call SIMCA
+                    if (is.null(tuningParameters)) {
+                        alphaLevel <-  NULL  # will then use default
+                    } else {
+                        alphaLevel <- tuningParameters$Threshold
+                    }
+                    predictions <- predictSIMCA(modelList[[modelName]], 
+                                                spectrumInput, 
+                                                alphaLevel)
+                    member <- predictions$member
+                    names(member) <- NULL
+                    
+                    # save results
+                    returnList[[modelName]] <- 
+                        list(Pass = member)
+                }
+                returnList <- unlist(returnList)
             }
-            returnList <- unlist(returnList)
         }
     }
     
