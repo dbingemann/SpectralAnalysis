@@ -66,8 +66,8 @@ getModels <- function(modelNames) {
 # tuning parameters
 getModelParameters <- function() {
     # can be NULL if adjustment panel is not desired
-#    return(NULL)
-    return( list(Threshold = 0.95) )
+    return(NULL)
+#    return( list(Threshold = 0.95) )
 #    return( list(Threshold = 0.95, Dimension = 2) )
 }
 
@@ -93,22 +93,20 @@ doAnalysis <- function(spectrumInput = NULL,
                     if (is.null(tuningParameters)) {
                         alphaLevel <-  NULL  # will then use default
                     } else {
-                        alphaLevel <- tuningParameters$Threshold
+                        alphaLevel <- 1-tuningParameters$Threshold
                     }
                     predictions <- predictSIMCA(modelList[[modelName]], 
                                                 spectrumInput, 
                                                 alphaLevel)
-                    member <- predictions$member
-                    names(member) <- NULL
                     
                     # save results
-                    returnList[[modelName]] <- 
-                        list(Pass = member)
+                    returnList[[modelName]] <- predictions
+                        
                 }
-                returnList <- unlist(returnList)
             }
         }
     }
     
     return(returnList)
 }
+

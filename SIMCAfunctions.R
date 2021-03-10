@@ -238,7 +238,7 @@ preProcessing <- function(spectraInput, preProcessingParameters) {
 #   
 #############################
 
-analysisSIMCA <- function(spectraInput, preProcessingParameters = NULL, SIMCAcomp = 2) {
+analysisSIMCA <- function(spectraInput, preProcessingParameters = NULL, SIMCAcomp = NULL) {
     #
     # wrapper to call SIMCA model calc with not pre-processed Enlighten spectra
     #
@@ -248,8 +248,13 @@ analysisSIMCA <- function(spectraInput, preProcessingParameters = NULL, SIMCAcom
         # get global values form start of file
         parameters <- simcaParameters()
         preProcessingParameters <- parameters$preProcessingParameters
-        SIMCAcomp <- parameters$SIMCAcomp
     }
+ 
+    if (is.null(SIMCAcomp)) {
+        # get global values form start of file
+        parameters <- simcaParameters()
+        SIMCAcomp <- parameters$SIMCAcomp
+    }   
     
     spectra <- preProcessing(spectraInput, preProcessingParameters)
     simcaModel <- analysisSIMCApreProcessed(spectra, SIMCAcomp, preProcessingParameters)
@@ -257,7 +262,7 @@ analysisSIMCA <- function(spectraInput, preProcessingParameters = NULL, SIMCAcom
 }
 
 
-analysisSIMCApreProcessed <- function(spectra, SIMCAcomp = 2, preProcessingParameters) {
+analysisSIMCApreProcessed <- function(spectra, SIMCAcomp = NULL, preProcessingParameters) {
     
     #
     #   performs SIMCA analysis
@@ -265,6 +270,12 @@ analysisSIMCApreProcessed <- function(spectra, SIMCAcomp = 2, preProcessingParam
     #           spectra contain attr for preprocessing
     #   output: simca model results as a list
     #
+    
+    if (is.null(SIMCAcomp)) {
+        # get global values form start of file
+        parameters <- simcaParameters()
+        SIMCAcomp <- parameters$SIMCAcomp
+    }   
     
     simcaModel <- list()
     
@@ -334,12 +345,19 @@ analysisSIMCApreProcessed <- function(spectra, SIMCAcomp = 2, preProcessingParam
 
 
 
-thresholdsSIMCA <- function(simcaModel, alphaLevel = 0.05) {
+thresholdsSIMCA <- function(simcaModel, alphaLevel = NULL) {
     
     #
     #   determines thresholds for score and orthogonal distances
     #   for a given SIMCA model and a given alpha level
     #
+    
+    if (is.null(alphaLevel)) {
+        # get global values form start of file
+        parameters <- simcaParameters()
+        alphaLevel <- parameters$alphaLevel
+    }   
+    
     
     # cutoff
     confLevel <- 1 - alphaLevel
@@ -427,7 +445,7 @@ predictSIMCA <- function(simcaModel, newSpectraInput, alphaLevel = NULL) {
 
 
 
-predictSIMCApreProcessed <- function(simcaModel, newSpectra, alphaLevel = 0.05) {
+predictSIMCApreProcessed <- function(simcaModel, newSpectra, alphaLevel = NULL) {
     
     
     # input = SIMCA model - list format
@@ -442,6 +460,10 @@ predictSIMCApreProcessed <- function(simcaModel, newSpectra, alphaLevel = 0.05) 
     #
     # returns both distances for each spectrum, also assignment (yes/no), and thresholds used
     
+    if (is.null(alphaLevel)) {
+        parameters <- simcaParameters()
+        alphaLevel <- parameters$alphaLevel
+    }
     
     
     # check preprocessing string
@@ -577,7 +599,7 @@ plotSIMCAdist <- function(d_Scores, d_Orthogonal, thresholdSD = NA,
  
     distPlot <- ggplot(data = distDF,
                        mapping = aes(x = x, y = y)) + 
-        geom_point(alpha = 0.6, color = WasatchGreen) + 
+        geom_point(alpha = 0.3, color = WasatchGreen, size = 4) + 
         WasatchTheme + 
         ggtitle(paste("SIMCA Distances")) + 
         xlab(paste("Score Distance")) + 
@@ -639,7 +661,7 @@ plotSIMCAnormDist <- function(h, v, h_threshold = NA, v_threshold = NA,
 
 plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
                       modelPlotType = c("center", "scores", "distances"), 
-                      alphaLevel = 0.05, printPlot = FALSE) {
+                      alphaLevel = NULL, printPlot = FALSE) {
     
     #
     #   plots model results (if no prediction is given) - pick one form
@@ -649,6 +671,11 @@ plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
     #   and/or prediction results
     #       distances - uses thresholds from prediciton alpha, ignores input
     #
+    
+    if (is.null(alphaLevel)) {
+        parameters <- simcaParameters()
+        alphaLevel <- parameters$alphaLevel
+    }
     
     distPlot <- NULL
     
@@ -661,16 +688,17 @@ plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
         distDF <- rbind(distDF, data.frame(x = simcaModel$scoreDistances,
                                            y = simcaModel$orthogonalDistances,
                                            Type = "Train"))
-        alphaLevels <- c(0.8, 0.3)
-        sizeLevels <- c(1.5, 4)
+        alphaLevels <- c(0.9, 0.2)
+        colorLevels <- c(WasatchBlue, WasatchGreen)
         thresholdSD <- prediction$thresholdSD
         thresholdOD <- prediction$thresholdOD
         
         distPlot <- ggplot(data = distDF,
-                           mapping = aes(x = x, y = y, alpha = Type, size = Type)) + 
-            geom_point(color = WasatchGreen) + 
-            scale_size_manual(values = sizeLevels) +
+                           mapping = aes(x = x, y = y, 
+                                         alpha = Type, color = Type)) + 
+            geom_point(size = 4) + 
             scale_alpha_manual(values = alphaLevels) +
+            scale_color_manual(values = colorLevels) +
             WasatchTheme + 
             ggtitle(paste("SIMCA Distances")) + 
             xlab(paste("Score Distance")) + 

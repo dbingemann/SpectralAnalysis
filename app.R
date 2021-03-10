@@ -92,11 +92,19 @@ ui <- fluidPage(
         mainPanel(
            plotOutput("spectrumPlot"),
            
-           h4("Analysis Results"),
+           h3("Analysis Results"),
            
-           verbatimTextOutput("results")
-           
-         )
+           fluidRow(
+               column(5,
+                      br(),
+                      
+                      verbatimTextOutput("results")
+                ),
+               column(7, 
+                       plotOutput("SIMCAfit", height = 300)
+                )
+           )
+        )
     )
 )
 
@@ -230,9 +238,9 @@ server <- function(input, output, session) {
             geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
     })
     
-
-    output$results <- renderPrint({
-
+    
+    prediction <- reactive({
+        
         spectrum <- spectrumInput()
         
         if (input$allModels) {
@@ -257,12 +265,62 @@ server <- function(input, output, session) {
                                   tuningParametersList)
         }
         
-    
+        return(results)
+    })
 
+    
+    output$results <- renderPrint({
+        
+        results <- prediction()
+        
         for (index in seq_along(results)) {
-            cat(names(results)[index], ":", results[[index]])
-            cat("\n")
+            
+            modelName <- names(results)[index]
+            predictions <- results[[modelName]]
+            member <- predictions$member
+            names(member) <- NULL
+            
+            cat(modelName, ":", ifelse(member, "PASS", "---"), "\n")
         }
+        
+    })
+        
+        
+
+    output$SIMCAfit <- renderPlot({
+        
+        results <- prediction()
+        plotModel <- ""
+        
+        for (index in seq_along(results)) {
+            
+            modelName <- names(results)[index]
+            predictions <- results[[modelName]]
+            member <- predictions$member
+            names(member) <- NULL
+            
+            if (member) {
+                if (plotModel == "") {
+                    plotModel <- modelName
+                } else {
+                    # not a single match
+                    plotModel <- "none"
+                }
+            }
+        }
+        
+        if ((plotModel != "") & (plotModel != "none")) {
+            modelPredictions <- results[[plotModel]]
+            model <- modelList[[plotModel]]
+            SIMCAplot <- plotSIMCA(simcaModel = model,
+                                   prediction = modelPredictions)
+        } else {
+            SIMCAplot <- ggplot() + 
+                annotate("text", x = 4, y = 25, size=8, label = "No Match") + 
+                theme_void()
+        }
+        SIMCAplot <- SIMCAplot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+        print(SIMCAplot)
     })
 }
 
