@@ -16,3 +16,7 @@ For some analysis model tuning parameters might be useful. Those can also be def
 
 ![Screen Shot of the app matching a sample](https://github.com/dbingemann/SpectralAnalysis/blob/main/doc/ValidationScreenShot.png)
 
+## Disclaimer
+
+This tool is a development tool that provides a nice interface for building and testing models for chemometric development, but it has not been developed nor tested for implementation into production environments and is not CFR compliant.
+
