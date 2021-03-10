@@ -290,7 +290,7 @@ server <- function(input, output, session) {
     output$SIMCAfit <- renderPlot({
         
         results <- prediction()
-        plotModel <- ""
+        plotModel <- "none"
         
         for (index in seq_along(results)) {
             
@@ -300,21 +300,31 @@ server <- function(input, output, session) {
             names(member) <- NULL
             
             if (member) {
-                if (plotModel == "") {
+                if (plotModel == "none") {
                     plotModel <- modelName
                 } else {
                     # not a single match
-                    plotModel <- "none"
+                    plotModel <- "multi"
                 }
             }
         }
         
-        if ((plotModel != "") & (plotModel != "none")) {
+        if ((plotModel != "multi") & (plotModel != "none")) {
+            # single match from multi or single model
             modelPredictions <- results[[plotModel]]
             model <- modelList[[plotModel]]
             SIMCAplot <- plotSIMCA(simcaModel = model,
                                    prediction = modelPredictions)
         } else {
+            if (! input$allModels) {
+                # single model selected
+                plotModel <- input$singleModel
+                modelPredictions <- results[[plotModel]]
+                model <- modelList[[plotModel]]
+                SIMCAplot <- plotSIMCA(simcaModel = model,
+                                       prediction = modelPredictions)
+            } else {
+            # no match from multi
             SIMCAplot <- ggplot() + 
                 annotate("text", x = 4, y = 25, size=8, label = "No Match") + 
                 theme_void()
