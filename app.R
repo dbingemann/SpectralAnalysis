@@ -328,6 +328,7 @@ server <- function(input, output, session) {
             SIMCAplot <- ggplot() + 
                 annotate("text", x = 4, y = 25, size=8, label = "No Match") + 
                 theme_void()
+            }
         }
         SIMCAplot <- SIMCAplot + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
         print(SIMCAplot)
