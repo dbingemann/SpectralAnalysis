@@ -12,9 +12,10 @@ This app monitors the most recent folder with a data stamp for the most recent f
 
 The app then performs an analysis as specified by the user. Typically, this is the application of a chemometric model, if multiple models are available, the user can chose between them, or apply all at once. The analysis results are displayed below the spectrum. Shown is a SIMCA classification analysis with multiple models and one matching model. Additional graphical feedback about the match is shown if there is exactly one matching model.
 
-For some analysis model tuning parameters might be useful. Those can also be defined in the analysis script and will be added to the user interface.
+For some analysis model tuning parameters might be useful. Those can also be defined in the analysis script and are then added to the user interface. An example is the acceptance threshold in the present app. This parameter can be adjusted without having to create a new model.
 
-![Screen Shot of the app matching a sample](https://github.com/dbingemann/SpectralAnalysis/blob/main/doc/ValidationScreenShot.png)
+
+![Screen Shot of the app matching a sample](https://github.com/dbingemann/SpectralAnalysis/blob/main/doc/ThresholdAdjustmentUpdate.png)
 
 ## Disclaimer
 

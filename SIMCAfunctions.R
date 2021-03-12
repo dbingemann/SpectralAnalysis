@@ -29,7 +29,7 @@ simcaParameters <- function() {
     
     # SIMCA
     pickComponents <- 3
-    alphaLevel <- 1e-5
+    alphaLevel <- 0.01
     
     # preprocessing settings
     # parameters for preprocessing: interpolation, SG, min wavenumber
