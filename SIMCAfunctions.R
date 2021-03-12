@@ -704,8 +704,8 @@ plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
             xlab(paste("Score Distance")) + 
             ylab(paste("Orthogonal Distance")) +
             theme(aspect.ratio = 1) + 
-            geom_hline(yintercept = thresholdOD, color = plotGrey, alpha = 0.4) +
-            geom_vline(xintercept = thresholdSD, color = plotGrey, alpha = 0.4)
+            geom_hline(yintercept = thresholdOD, color = plotGrey, alpha = 0.6, size = 1) +
+            geom_vline(xintercept = thresholdSD, color = plotGrey, alpha = 0.6, size = 1)
         
         if (printPlot) {
             print(distPlot)

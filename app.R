@@ -34,7 +34,8 @@ tuningParameters <- unlist(tuningParametersList)
 
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
+ui <- shinyUI(
+    fluidPage(
 
     # Logo
     img(src = "Wasatch_Photonics_gradient_logo_1000px.png",
@@ -85,7 +86,7 @@ ui <- fluidPage(
 
             # if there are parameters add another UI section
             uiOutput("parameter_conditional")
-
+            
         ),
 
         # Show a plot of the generated distribution
@@ -105,8 +106,13 @@ ui <- fluidPage(
                 )
            )
         )
-    )
-)
+    ),
+    hr(),
+    h6("This tool is a development tool that provides a nice interface for 
+       building and testing models for chemometric development, but it has not 
+       been developed nor tested for implementation into production environments 
+       and is not CFR compliant.")
+))
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
@@ -260,6 +266,7 @@ server <- function(input, output, session) {
                 }
             }
             tuningParametersList <- list(tuningParameters)
+            names(tuningParametersList) <- names(tuningParameters)
             results <- doAnalysis(spectrum$Spectrum, 
                                   models, modelList, 
                                   tuningParametersList)
