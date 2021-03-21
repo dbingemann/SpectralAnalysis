@@ -225,8 +225,10 @@ server <- function(input, output, session) {
             xvar <- names(xMatch)[xMatch][1]
             yvar <- names(yMatch)[yMatch][1]
         }
-        return(list(FileName = fileID, Spectrum = spectraInput,
-                    x = xvar, y = yvar))
+        return(list(FileName = fileID, 
+                    Spectrum = spectraInput,
+                    x = xvar, 
+                    y = yvar))
     })
     
     
@@ -280,6 +282,9 @@ server <- function(input, output, session) {
         
         results <- prediction()
         
+        # also add to validation log file for each day
+        spectrum <- spectrumInput()
+
         for (index in seq_along(results)) {
             
             modelName <- names(results)[index]
@@ -288,6 +293,10 @@ server <- function(input, output, session) {
             names(member) <- NULL
             
             cat(modelName, ":", ifelse(member, "PASS", "---"), "\n")
+            
+            # add to log file line
+            addLogLine(modelName, predictions)
+            
         }
         
     })

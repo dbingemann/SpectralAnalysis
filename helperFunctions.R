@@ -28,3 +28,13 @@ getCurrentFile <- function() {
                 fileName = currentFile))
 
 }
+
+
+
+
+addLogLine <- function(modelName, predictions) {
+    
+    # get most current log file
+    
+    
+}

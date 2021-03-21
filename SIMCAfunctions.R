@@ -28,8 +28,8 @@ simcaParameters <- function() {
     #   'global' alphaLevel will be used is no value is provided to alpha level (default - NULL)
     
     # SIMCA
-    pickComponents <- 3
-    alphaLevel <- 0.01
+    pickComponents <- 2
+    alphaLevel <- 1e-5
     
     # preprocessing settings
     # parameters for preprocessing: interpolation, SG, min wavenumber
@@ -237,6 +237,8 @@ preProcessing <- function(spectraInput, preProcessingParameters) {
 #   Analysis
 #   
 #############################
+
+
 
 analysisSIMCA <- function(spectraInput, preProcessingParameters = NULL, SIMCAcomp = NULL) {
     #
@@ -487,7 +489,7 @@ predictSIMCApreProcessed <- function(simcaModel, newSpectra, alphaLevel = NULL) 
     SIMCAvariances <- simcaModel$SIMCAvariances
     
     # Maha Distance
-    # make sur eit stays a matrix - hence the drop = FALSE for single spectrum
+    # make sure it stays a matrix - hence the drop = FALSE for single spectrum
     SIMCAscoresSquared <- (scoresSIMCA[, SIMCArange, drop=FALSE])^2
     d_Scores <- sqrt(rowSums(t(t(SIMCAscoresSquared) / SIMCAvariances)))
     
@@ -509,9 +511,29 @@ predictSIMCApreProcessed <- function(simcaModel, newSpectra, alphaLevel = NULL) 
     members <- (d_Scores < thresholds$thresholdSD & 
                     d_Orthogonal < thresholds$thresholdOD)
     
+    
+    # turn distance into percentiles
+    v0 <- simcaModel$meanOrthogonalDistanceSquared
+    logNormWidth <- simcaModel$logNormWidthOrthogonalDistancesSquaredNorm
+    
+    p_Scores = pchisq(d_Scores^2, df = SIMCAcomp)
+    
+    # confLevelSD <- confLevel
+    # h_threshold <- qchisq(confLevelSD, df = SIMCAcomp)
+    # thresholdSD <- sqrt(h_threshold)
+    
+    p_Orthogonal = pnorm(log(d_Orthogonal^2/v0), sd = logNormWidth)
+
+    #     confLevelOD <- confLevel
+    #       v_threshold <- exp(qnorm(confLevelOD, sd = logNormWidth))
+    #       thresholdOD <- sqrt(v0 * v_threshold)
+    
+    
     # return distances
     distances <- list(scoreDistances = d_Scores,
                       orthogonalDistances = d_Orthogonal,
+                      scorePercentile = p_Scores,
+                      orthogonalPercentile = p_Orthogonal,
                       member = members,
                       alphaLevel = alphaLevel,
                       thresholdSD = thresholds$thresholdSD,
