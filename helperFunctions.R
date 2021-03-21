@@ -35,7 +35,7 @@ getCurrentFile <- function() {
 addLogLine <- function(modelName, spectrum, predictions) {
     
     # get most current log file
-    logFilePath <- "./LogFiles"
+    logFilePath <- "~/Github/SpectralAnalysis/LogFiles"
     logFiles <- dir(path = logFilePath, pattern = ".*.log")
     currentDate <- Sys.Date()
     logFileBaseName <- "LogFile"
@@ -44,12 +44,14 @@ addLogLine <- function(modelName, spectrum, predictions) {
     if (length(currentLogFile) == 0) {
         currentLogFile <- paste0(logFileBaseName, "_", currentDate, ".log")
         newLogFilePath <- paste0(logFilePath, "/", currentLogFile)
-        headerLine <- "FileName,Model, Member,ScoreDistance,OrthogonalDistance,AlphaLevel,ThresholdSd,ThresholdOD"
+        headerLine <- "FileName,TimeStamp,Model,Member,ScoreDistance,OrthogonalDistance,AlphaLevel,ThresholdSd,ThresholdOD"
         writeLines(headerLine, newLogFilePath)
     }
     
     currentLogFilePath <- paste0(logFilePath, "/", currentLogFile)
+    currentTime <- Sys.time()
     newLogLine <- data.frame(FileName = spectrum$FileName,
+                             TimeStamp = currentTime,
                              Model = modelName,
                              Member = predictions$member[1],
                              ScoreDistance = predictions$scoreDistances[1],

@@ -295,7 +295,7 @@ server <- function(input, output, session) {
             cat(modelName, ":", ifelse(member, "PASS", "---"), "\n")
             
             # add to log file line
-            # addLogLine(modelName, spectrum, predictions)
+            addLogLine(modelName, spectrum, predictions)
             
         }
         
