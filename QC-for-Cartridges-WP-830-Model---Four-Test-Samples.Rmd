@@ -1,0 +1,1974 @@
+---
+title: "Cartridge QC - WP-830 Model - Four Test Samples"
+author: |
+  | \normalsize \itshape{Dieter Bingemann}
+date: |
+  | \normalsize \upshape{20 March 2021}
+output: 
+     pdf_document: 
+          latex_engine: xelatex
+          fig_caption: true
+          number_sections: true
+classoption: twoside
+fontsize: 10pt
+header-includes:
+     - \usepackage[T1]{fontenc}
+     - \usepackage{fontspec}
+     - \usepackage[sfdefault]{noto}
+     - \usepackage{sansmathfonts}
+     - \usepackage{fancyhdr}
+     - \usepackage{graphicx}
+     - \usepackage{geometry}
+     - \usepackage{afterpage}
+     - \usepackage{xcolor}
+     - \usepackage{sectsty}
+     - \definecolor{Wasatch}{RGB}{47, 84, 150}
+     - \definecolor{RuleColor}{RGB}{66, 153, 107}
+     - \definecolor{Grey}{RGB}{128, 128, 128}
+     - \usepackage{titling}
+     - \pretitle{\begin{center}\huge\color{Wasatch}}
+     - \posttitle{\par\end{center}\normalsize\vskip 0.5em}
+     - \sectionfont{\color{Wasatch}\mdseries\scshape}
+     - \subsectionfont{\color{Wasatch}\mdseries}
+     - \geometry{top=2in, head=65pt, headsep=0.8in}
+     - \pagestyle{fancyplain}
+     - \addtolength{\headwidth}{-0.25in}
+     - \raggedbottom
+     - \fancyfoot{}
+     - \fancyhead{}
+     - \fancyhead[LO]{\fancyplain{\includegraphics[width=8cm]
+            {C:/Users/dbingemann/Pictures/Wasatch_Photonics_gradient_logo_1000px.png}}
+                         {\nouppercase{\leftmark}}}
+     - \fancyhead[RO]{\fancyplain{Wasatch Photonics Rep-Office \\ 
+                    Lahnstrasse 27 \\ 
+                    65195 Wiesbaden \\ 
+                    Germany \\
+                    +49 611 1718 8744}{\includegraphics[width=2cm]
+            {C:/Users/dbingemann/Pictures/Wasatch_Photonics_gradient_logo_1000px.png}}}
+     - \fancyhead[RE]{\fancyplain{}{QC SIMCA Model Four Samples}}
+     - \fancyhead[LE]{\fancyplain{}{\includegraphics[width=2cm]
+            {C:/Users/dbingemann/Pictures/Wasatch_Photonics_gradient_logo_1000px.png}}}
+     - \fancyfoot[RO, LE]{\fancyplain{}{\color{Grey}Page \thepage}}
+     - \fancyfoot[LO, RE]{\fancyplain{}{\color{Grey}Private and Confidential}}
+     - \renewcommand{\headrulewidth}{0.4pt}
+     - \renewcommand{\footrulewidth}{0.4pt}
+     - \newcommand{\vect}[1]{\boldsymbol{#1}}
+abstract: We optimize SIMCA models for four different samples based on an extensive data set of 60 sample measurements for each of four different products.
+---
+
+\thispagestyle{plain}
+
+\begin{center}
+\vspace{2cm}
+\includegraphics[width=14cm]{C:/Users/dbingemann/Pictures/diabetes.jpg}
+
+Insulin
+\end{center}
+
+\newgeometry{top=1.1in, head=35pt, headsep=0.3in, 
+               bottom=1.1in, footskip=40pt,
+               inner=1.25in, outer=1.25in}
+\renewcommand{\footrulewidth}{2.0pt}
+\renewcommand{\footrule}{\hbox to\headwidth{\color{RuleColor}\leaders\hrule height\footrulewidth\hfill}}
+
+\newpage
+\phantom{X}
+\newpage
+
+\setcounter{tocdepth}{3}
+\tableofcontents
+
+\newpage
+\phantom{X}
+\newpage
+
+
+```{r, child = 'C:/Users/dbingemann/Documents/Data Analysis and Reports/Layout Template Settings Include File.Rmd'}
+
+
+```
+
+# Executive Summary {-}
+
+We develop SIMCA models for four different products using a data set of 60 individual sample measurements. We optimize the model parameters with extensive cross-validation.
+
+The spectrum quality as recorded with a 830-nm Raman system at 2-second integration time after averaging over 30 samples is very good.
+
+A good selection of the model parameters is:
+
+* significance level $\alpha$ at 1e-5
+
+* model flexibility at 2 PCA components
+
+With these settings we did not find any false negatives (from the train or test set of the same sample) nor false positives (from all other samples).
+
+
+\newpage
+
+\phantom{X}
+\newpage
+
+# Introduction
+
+Here we investigate the performance of Raman to qualify, or classify cartridges of a solution as an incoming or outgoing QC inspection. 
+
+In an initial series of experiments we have established the feasibility of the general approach to use 830-nm Raman to distinguish samples in their vials with measurements at 2-second integration time using multiple tens of averages.
+
+In this second step of the exploration we determine models for four different products from a set of 60 sample vials measured individually. In this analysis we perform cross-validation of these models with the provided set of 60 spectra for each of the four samples.
+
+
+# Experiment
+
+For these experiments we use a 830-nm Raman system with integrated laser. The sample cartridges are inserted into custom-made sample holders which hold the cartridge securely in the laser focus inside the regular sample holder for very simple insertion. 
+
+![Example Setup for Sample Measurement. Spectrometer in the left back, sample set in the right back, sample holder with custom insert and inserted sample center, matching custom sample holder lid in the front](C:/Users/dbingemann/Pictures/setupCartridges.jpg)
+
+The spectra are measured with 30 averages at 2 second integration time and dark-corrected. A single spectrum is measured for each sample.
+
+# Samples
+
+Four of the approximately 40 different products were selected for this test.
+
+```{r message=FALSE, warning=FALSE}
+
+setwd("~/Data Analysis and Reports/Random Little Measurements/Novo Nordisk Insulin QC/")
+homePath <- getwd()
+
+setwd("Actual Model Data/")
+dataPath <- getwd()
+
+fileName <- "Product Codes.csv"
+productCodes <- read_csv(fileName)
+
+productLookup <- list()
+productLookup[c(productCodes$ProductCode, productCodes$SampleNumber)] <-
+        rep(productCodes$ProductName, 2)
+
+
+kable(productCodes,
+      caption = "Products selected for this test. Shown are the internal product codes and the associated trade names")
+
+```
+
+Two batches are available for each product, with 40 samples each. Out of each batch, 30 samples were selected and measured for the model development, and 10 samples reserved to test the models with new sample vials.
+
+
+# Analysis
+
+We plot the spectra and perform pre-processing using (a) interpolation to a common wavenumber axis (b) taking the first derivative to remove the background and (c) perform SNV scaling to correct for any intensity variations. 
+
+We develop individual one-class SIMCA classification models for each product and check each model using cross-validation with the provided spectra set.
+
+
+
+\newpage
+
+# Data
+
+The spectra recorded for all samples are saved in multiple CSV files.
+
+
+```{r warning=FALSE}
+# global, only set once
+
+# long
+spectraCombined <- data.frame()
+
+# index to run up globally by each scan (no two spectra will have same ID)
+spectrumID <- 0
+
+```
+
+
+```{r warning=FALSE}
+
+setwd(dataPath)
+
+fileNames <- dir(pattern = ".*ModelData.*.csv")
+
+numFiles <- length(fileNames)
+
+fileIDs <- seq(numFiles)
+
+```
+
+
+
+
+```{r message=FALSE, warning=FALSE}
+
+setwd(dataPath)
+
+
+# read all files
+for (fileID in fileIDs) {
+  
+  # save specifics for this experiment
+  fileName <- fileNames[fileID]
+  
+  # Example
+  # 5181200_ModelData_A.csv
+
+  experiment <- "Model Development"
+  
+  # read meta data
+  metaData <- enlightenMetaData(fileName = fileName)
+  spectraInput <- enlightenSpectra(fileName = fileName)
+  spectra <- enlightenGetProcessed(spectraInput)
+  
+  numSpectra <- ncol(spectra)
+  
+  
+  # get sample IDs out of full set using hard coded numbers 
+  sampleID <- metaData$Label
+  productID <- str_extract(sampleID, "^[0-9]+(?=_)")
+  batchID <- str_extract(sampleID, "(?<=_)[AB](?=_)")
+  vialID <- str_extract(sampleID, "(?<=_)[0-9]{2}$")
+  
+  productNames <- unlist(productLookup[productID])
+  
+  spectrometer <- paste("WP", str_extract(metaData$Model, "[0-9]+(?=-)"), sep = "-")
+  
+  # other info from meta data
+  integrationTime <- metaData$`Integration Time`
+  serialNumber <- metaData$`Serial Number`
+  numAvg <- metaData$`Scan Averaging`
+  
+  numPixels <- nrow(spectra)
+  pixels <- seq(numPixels)
+  wavenumbers <- spectraInput$Wavenumber
+  
+  # goes from 1 to N
+  runID <- seq(numSpectra)
+  
+
+  # start with last index, then add runIDs
+  # initial values = 0
+  spectrumID <- spectrumID[length(spectrumID)] + runID
+
+
+  newSpectraCombined <- data.frame(
+                            FileID = fileID,
+                            Experiment = experiment,
+                            FileName = fileName,
+                            SerialNumber = rep(serialNumber, each = numPixels),
+                            Spectrometer = rep(spectrometer, each = numPixels),
+                            SpectrumID = rep(spectrumID, each = numPixels),  
+                            RunID = rep(runID, each = numPixels),  # for one int time
+                            
+                            Sample = rep(sampleID, each = numPixels),
+                            Vial = rep(vialID, each = numPixels),
+                            Batch = rep(batchID, each = numPixels),
+                            Product = rep(productID, each = numPixels),
+                            ProductName = rep(productNames, each = numPixels),
+
+                            IntegrationTime = rep(integrationTime, each = numPixels),
+                            NumAverages = rep(numAvg, each = numPixels),
+                            Pixel = rep(pixels, numSpectra),
+                            Wavenumber = rep(wavenumbers, numSpectra),
+                            Intensity = c(spectra))
+  
+  
+  spectraCombined <- rbind(spectraCombined, newSpectraCombined)
+  
+}
+
+
+```
+
+
+
+
+
+## Data Imported
+
+We find the following data:
+
+```{r, comment = ""}
+
+cat("\nSpectra - Long Format\n")
+str(spectraCombined, width = 75, strict.width = "cut")
+
+
+```
+
+## Experiment Overview
+
+```{r comment = ""}
+
+experiments <- spectraCombined %>%
+  filter(Pixel == 1) %>%
+  select(-c(Pixel, Intensity, Wavenumber))
+
+
+print(table(Product = experiments$ProductName,
+            Experiment = experiments$Experiment),
+      zero.print = ".", digits = 0)
+
+```
+
+# Split Single Experiment Data by Sample
+
+We here prepare individual "Enlighten" type data frames, one for each sample.
+
+```{r}
+
+sampleNames <- unique(experiments$ProductName)
+
+enlightenSpectraList <- list()
+
+for (sampleName in sampleNames) {
+  
+  spectraInput <- spectraCombined %>% 
+    filter(ProductName == sampleName) %>% 
+    select(Pixel, Wavenumber, Intensity, Sample) %>% 
+    pivot_wider(names_from = Sample,
+                values_from = Intensity)
+  
+  enlightenSpectraList[[sampleName]] <- spectraInput
+  
+}
+
+
+```
+
+
+
+
+\newpage
+
+# Sample Spectra by Product
+
+We here plot each raw sample spectrum in a separate panel.
+
+
+```{r, warning=FALSE, message=FALSE}
+
+plotRange <- c(250, 2000)
+
+
+spectraPlot <- ggplot(data = spectraCombined, 
+       mapping = aes(x = Wavenumber, y = Intensity/IntegrationTime)) + 
+        geom_line(aes(color = ProductName,
+                      group = SpectrumID), alpha = 0.3) + 
+        WasatchTheme + 
+        ggtitle("All Samples") + 
+        xlab("RAMAN SHIFT (1/cm)") + 
+        ylab("REL. SIGNAL") + 
+        scale_x_continuous(limits = plotRange) +
+        theme(axis.text.x = element_text(size = 10),
+              axis.text.y = element_blank()) +
+        geom_hline(yintercept = 0, linetype = "solid", colour = plotGrey, alpha=0.3) +
+        facet_wrap(.~ProductName, scales = "free_y", ncol = 2) + 
+        guides(color = "none")
+
+
+print(spectraPlot)
+
+
+
+```
+
+Each panel shows the spectra for all samples for each product. 
+
+The spectra contain some substantial background, which we will address in the pre-processing step. 
+
+The Tresiba spectra seem to fall into two groups with different background.
+
+
+\newpage
+
+
+# Pre-Processing
+
+We will use a first derivative to remove the background. This approach has the advantage to be model- and fit-free, that is, it will yield reproducible results unlike an iterative baseline fit.
+
+We also will remove all signal below a minimum wavenumber of 300 1/cm and above 1800 1/cm.
+
+Finally, we scale each derivative using SNV.
+
+
+```{r warning=FALSE, message=FALSE}
+source("~/GitHub/SpectralAnalysis/SIMCAfunctions.R")
+```
+
+
+```{r}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+
+
+```{r warning = FALSE}
+
+
+spectraCombinedDeriv <- data.frame()
+
+wavenumbers <- seq(from = parameters$startWavenumber, 
+                    to = parameters$endWavenumber,
+                    by = parameters$interpSpacing)
+
+
+
+for (sampleName in sampleNames) {
+  
+  spectraInput <- enlightenSpectraList[[sampleName]]
+  
+  metaData <- experiments %>% 
+    filter(ProductName == sampleName)
+  
+  spectra <- preProcessing(spectraInput, parameters)
+  numInterpPixels <- nrow(spectra)
+  numSampleSpectra <- ncol(spectra)
+  spectraNames <- colnames(spectra)
+  
+  newDerivatives <- data.frame(Pixel = rep(seq(numInterpPixels), numSampleSpectra),
+                               Wavenumber = rep(wavenumbers, numSampleSpectra),
+                               Sample = rep(spectraNames, each = numInterpPixels),
+                               Derivative = c(spectra)) %>% 
+    left_join(metaData, by = "Sample")
+  
+  spectraCombinedDeriv <- rbind(spectraCombinedDeriv, newDerivatives)                           
+}
+
+
+```
+
+
+
+
+## Preprocessed Spectra by Sample
+
+We here plot each sample in a separate panel, but all combined in one plot.
+
+
+```{r, warning=FALSE, message=FALSE}
+
+
+plotRange <- c(300, 2000)
+
+spectraPlot <- ggplot(data = subset(spectraCombinedDeriv,
+                                    Wavenumber > plotRange[1] & 
+                                      Wavenumber < plotRange[2]),
+                      mapping = aes(x = Wavenumber, y = Derivative)) + 
+        geom_line(aes(color = ProductName, group = SpectrumID), alpha = 0.3) + 
+        WasatchTheme + 
+        ggtitle("All Samples") + 
+        xlab("WAVENUMBER (1/cm)") + 
+        ylab("DERIV. SIGNAL (cts/pixel)") + 
+        theme(axis.text.x = element_text(size = 10),
+              axis.text.y = element_blank()) +
+        geom_hline(yintercept = 0, linetype = "solid", colour = plotGrey, alpha=0.3) +
+        facet_wrap(.~ProductName, scales = "free_y", ncol = 2) + 
+        guides(color = "none", linetype = "none")
+
+
+print(spectraPlot)
+
+
+```
+The spectra appear sufficiently different by sample and sufficiently similar within each group. We still see some separation in the "Tresiba" product.
+
+
+\newpage
+
+# SIMCA model for one-class outlier detection
+
+We next develop a SIMCA model for each sample with the goal to discriminate against out-of-class sample spectra, and only accept the in-class sample spectra. We will use the pictured SNV-normalized derivative spectra as our spectral data set.
+
+We here test the SIMCA model accuracy for all experiments combined (representing a wide range of experimental conditions and repeats) and, if the results is not satisfactory, subsequently for each experiment run separately, to be able to identify the best experimental conditions for good model performance.
+
+We will split each data set into 2 vials with 10 spectra each, inserted in two orientations, as the training set and the third vial, also with 2x10 spectra in the test set for the most realistic performance test. As the vials were not specifically labeled, by combining the three runs into one data set, we might "contaminate" the training set with the test sample if we combine all three runs into one data set...
+
+
+## Random Train/Test Split
+
+We noticed a significant sample dependence of the spectra. With just three vials (and old samples with their individual aging history), using a single vial for test and two others for training did not work well, the samples were just too different.
+
+To still being able to do some method development, we here mix the 60 spectra and split them randomly 40/20 into train and test.
+
+
+```{r warning=FALSE}
+
+trainTestLabels <- c("Train", "Test")
+
+set.seed(1234567)
+
+testSamples <- 20
+
+# third time is a charm
+experiments <- experiments %>%
+  group_by(Product) %>% 
+  mutate(TrainTest = factor(ifelse(row_number() %in% sample(x = n(), size = testSamples),
+                            "Test", "Train"), levels = trainTestLabels)) %>% 
+  ungroup()
+         
+
+```
+
+```{r comment="  "}
+# check
+
+table(Product = experiments$ProductName,
+      Split = experiments$TrainTest)
+```
+
+
+```{r}
+
+
+enlightenSpectraListTrain <- list()
+enlightenSpectraListTest <- list()
+
+testSampleNames <- experiments %>% 
+  filter(TrainTest == "Test") %>% 
+  pull(Sample)
+
+
+
+for (sampleName in sampleNames) {
+  
+  # data frame as input - like enlighten
+  spectraInput <- enlightenSpectraList[[sampleName]]
+  
+  columnNames <- names(spectraInput)
+  testSamples <- which(columnNames %in% testSampleNames) 
+  xAxisColumns <- grep(pattern = "_", x = columnNames, invert = TRUE)
+  
+  enlightenSpectraListTest[[sampleName]] <- spectraInput[, c(xAxisColumns, testSamples)]
+  enlightenSpectraListTrain[[sampleName]] <- spectraInput[, -testSamples]
+
+  
+}
+
+
+```
+
+
+\newpage
+
+# SIMCA Classification
+
+
+SIMCA (Soft Independent Modeling of Class Analogy) is a simple, but popular one-class classification method mainly based on PCA. The general idea is to generate multiple PCA models, one for each class of samples (hence "Independent Modeling") and to test the closeness of any new measurements to each one of those one-class models in turn. 
+
+To judge membership, two distances are used, the first being the distance within the PCA space, the so-called score distance, the second the distance perpendicular to the limited-dimensionality PCA space, the so-called orthogonal distance (as the distance is measured orthogonal to the PCA space). 
+
+Thresholds for both distances are set based on the acceptable false positive and false negative rates, leading to a decision about membership of a new measurement to any given SIMCA class. The result can be a membership in one, multiple, or none of the classes.
+
+
+## A SIMCA Example - Model for Sample 001 to 006 Experiment Run
+
+We here determine a SIMCA model for one of the samples (001) as a demonstration. Here we determine the example model with 3 principal components and a threshold of $\alpha = 0.001$ for a demonstration of the method. In cross validation this level will be optimized to achieve the lowest number of false positives and false negatives, as dictated by the application needs.
+
+
+## Load Sample Measurements
+
+We pick the sample measurements.
+
+```{r warning=FALSE, message=FALSE, comment = ""}
+
+
+# define individual SIMCA models by spectrometer and sample
+sampleCode <- sampleNames[1]
+
+# use Enlighten spectra format
+trainSpectraInput <- enlightenSpectraListTrain[[sampleCode]]
+
+testSpectraInput <- enlightenSpectraListTest[[sampleCode]]
+
+```
+
+Here we determine the model for sample `r sampleCode`.
+
+
+## Use own SIMCA routines
+
+We here start with "Enlighten Format" spectra as input for both train and test, pre-process both with the same parameter setting, find a model with the train spectra and predict with SIMCA using the test spectra.
+
+```{r warning=FALSE}
+
+pickComponents <- 2
+alphaLevel <- 0.0001
+
+```
+
+
+The settings are `r pickComponents` components and an alpha level of `r alphaLevel`.
+
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+
+simcaModel <- analysisSIMCA(trainSpectraInput, 
+                            SIMCAcomp = pickComponents, 
+                            preProcessingParameters = parameters)
+
+
+simcaPrediction <- predictSIMCA(simcaModel, 
+                                testSpectraInput, 
+                                alphaLevel = alphaLevel)
+
+
+plotSIMCA(simcaModel = simcaModel, prediction = simcaPrediction, 
+          alphaLevel = alphaLevel, printPlot = FALSE)
+
+```
+
+
+The larger the number of PCA components used in the definition of the model, the more flexible the model will get and the higher the chance that it will overfit on the training set - and reject the test set.
+
+
+## Check Prediction Percentiles
+
+We also calculated the percentiles (probabilities) for the test samples.
+
+```{r}
+percentileTable <- data.frame(Sample = names(simcaPrediction$scorePercentile),
+                              ScorePercentile = simcaPrediction$scorePercentile,
+                              OrthogonalPercentile = simcaPrediction$orthogonalPercentile) %>% 
+  mutate(pScore = 1 - ScorePercentile,
+         pOrthogonal = 1 - OrthogonalPercentile)
+
+kable(percentileTable, digits = 4, row.names = FALSE,
+      caption = "Table of the percentiles for score and orthogonal distances")
+
+
+```
+
+If we plot these percentiles:
+
+```{r warning=FALSE}
+
+fullRange <- c(1e-6, 1)
+
+ggplot(data = percentileTable,
+                     mapping = aes(x = pScore, y = pOrthogonal)) + 
+      geom_point(color = WasatchGreen, alpha = 0.4, size = 3) + 
+      WasatchTheme + 
+      ggtitle(paste("SIMCA Results")) + 
+      xlab(paste("Score p-Value")) + 
+      ylab(paste("Orthogonal p-Value")) +
+      theme(aspect.ratio = 1) +
+      geom_abline(slope = 1) +
+#      coord_cartesian(xlim = fullRange, ylim = fullRange) +
+      scale_x_log10() +
+      scale_y_log10()
+  
+
+```
+We will use the smaller of the two p-values (score and orthogonal) as our quantitative matching result.
+
+```{r}
+pValueTable <- percentileTable %>% 
+  select(Sample, pScore, pOrthogonal) %>% 
+  rowwise() %>% 
+  mutate(pValue = min(pScore, pOrthogonal))
+
+kable(pValueTable, digits = 4, row.names = FALSE,
+      caption = "Overall p value for the match of the test samples with the model, using the smaller of the two values, score and orthogonal p value.")
+```
+
+We now plot the distribution of these (overall) p values.
+
+
+```{r warning=FALSE}
+
+meanLogPvalue <- mean(log10(pValueTable$pValue))
+logMeanPvalue <- log10(mean(pValueTable$pValue))
+
+
+ggplot(data = pValueTable,
+        mapping = aes(x = log10(pValue))) + 
+      geom_density(color = WasatchGreen, alpha = 0.6, size = 1) + 
+      WasatchTheme + 
+      ggtitle(paste("SIMCA p-Values")) + 
+      xlab(paste("Log Overall p-Value")) + 
+      ylab(paste("Density")) + 
+      geom_vline(xintercept = c(meanLogPvalue, logMeanPvalue), 
+                 alpha = 0.6, color = plotGrey, linetype = c("dashed", "solid"))
+
+
+ggplot(data = pValueTable,
+        mapping = aes(x = pValue)) + 
+      geom_density(color = WasatchGreen, alpha = 0.6, size = 1) + 
+      WasatchTheme + 
+      ggtitle(paste("SIMCA p-Values")) + 
+      xlab(paste("Overall p-Value")) + 
+      ylab(paste("Density")) + 
+      geom_vline(xintercept = 10^c(meanLogPvalue, logMeanPvalue), 
+                 alpha = 0.6, color = plotGrey, linetype = c("dashed", "solid"))
+
+
+```
+
+A question to ask is what the distribution is for these p-values. 
+
+To this end we here test the distribution of the resulting p-values.
+
+```{r warning=FALSE}
+
+dof <- 2
+
+ggplot(pValueTable, aes(sample = pValue)) +
+  stat_qq(distribution = qchisq, dparams = list(df = dof), color = WasatchGreen) + 
+  stat_qq_line(distribution = qchisq, dparams = list(df = dof), color = WasatchBlue) + 
+  WasatchTheme + 
+  ggtitle(paste("Chi2 - df = ", dof, "-", sampleCode))
+
+
+ggplot(pValueTable, aes(sample = pValue)) + 
+  stat_qq(color = WasatchGreen) + 
+  stat_qq_line(color = WasatchBlue) + 
+  WasatchTheme + 
+  ggtitle(paste("Normal -", sampleCode))
+
+
+
+
+ggplot(pValueTable, aes(sample = log(pValue))) + 
+  stat_qq(color = WasatchGreen) + 
+  stat_qq_line(color = WasatchBlue) + 
+  WasatchTheme + 
+  ggtitle(paste("Normal of Log-transformed -", sampleCode))
+
+
+
+```
+
+Overall, the $\chi^2$ distribution with two degrees of freedom sort of fits the p-value distribution well enough for most samples.
+
+## Summary Statistics
+
+We finally also need to summarize the widely distributed p-values into one average measure to quantify the quality of the fit.
+
+Looking at all of the above, flipping through some samples, the most representative average (at least one that hits the maximum of the distribution) might be the p-value determined by averaging on the log scale.
+
+Maybe we should use this as the summary statistic for now, but plot all individual test results as well.
+
+
+\newpage
+
+# Meta Parameter Tuning
+
+We know step through several model complexities with the training set, determine the training p-Value, then use the model to predict the test set and determine the test p value.
+
+This is not really cross validation, simply testing different model complexities.
+
+```{r}
+source("~/GitHub/SpectralAnalysis/crossValidation.R")
+```
+
+
+```{r warning=FALSE, message=FALSE, comment = ""}
+
+
+# define individual SIMCA models by spectrometer and sample
+sampleCode <- sampleNames[1]
+
+# use Enlighten spectra format
+trainSpectraInput <- enlightenSpectraListTrain[[sampleCode]]
+
+testSpectraInput <- enlightenSpectraListTest[[sampleCode]]
+
+```
+
+The sample is `r sampleCode`.
+
+```{r warning=FALSE}
+
+maxComponents <- 8
+alphaLevel <- 0.0001  
+
+```
+
+
+The settings are `r maxComponents` max components and an alpha level of `r alphaLevel`.
+
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+```{r warning = FALSE}
+
+# this will be the loop...
+
+meanLogPvalues <- data.frame()
+
+allPvalues <- data.frame()
+
+for (numComp in seq(maxComponents)) {
+  
+  simcaModel <- analysisSIMCA(trainSpectraInput, 
+                              SIMCAcomp = numComp, 
+                              preProcessingParameters = parameters)
+  
+  pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                          model = simcaModel)
+  
+  rejectTrain <- pTrain < alphaLevel
+  
+  simcaPrediction <- predictSIMCA(simcaModel, 
+                                  testSpectraInput, 
+                                  alphaLevel = alphaLevel)
+  
+  pTest <- analysisCV(testSpectraInput, simcaModel)
+  
+  rejectTest <- pTest < alphaLevel
+
+  
+  simcaPlot <- plotSIMCA(simcaModel = simcaModel, prediction = simcaPrediction, 
+            alphaLevel = alphaLevel, printPlot = FALSE)
+  
+  print(simcaPlot)
+  
+  pValues <- data.frame(NumComp = numComp,
+                        pValue = c(pTrain, pTest),
+                        Rejected = c(rejectTrain, rejectTest),
+                        Type = c(rep("Train", length(pTrain)),
+                                 rep("Test", length(pTest))))
+  
+  allPvalues <- rbind(allPvalues, pValues)
+
+  meanLogPvalue <- pValues %>% 
+    group_by(Type, NumComp) %>% 
+    summarize(MeanLogPvalue = mean(log10(pValue)),
+              MeanPvalue = 10^MeanLogPvalue,
+              NumRejected = sum(Rejected),
+              .groups = "drop") %>% 
+    ungroup()
+
+  meanLogPvalues <- rbind(meanLogPvalues, meanLogPvalue)
+  
+}
+
+
+```
+
+
+## Result of the Fits
+
+We plot the overall p-value for each sample and the average across the train/test sets.
+
+```{r warning=FALSE}
+
+
+ggplot(data = meanLogPvalues,
+        mapping = aes(x = NumComp, y = MeanPvalue)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      geom_jitter(data = allPvalues,
+                  mapping = aes(x = NumComp, y = pValue, color = Type),
+                  size = 1, alpha = 0.2, width = 0.2) +
+      scale_color_manual(values = twoColors) +
+      WasatchTheme + 
+      ggtitle(paste("SIMCA p-Values - Sample", sampleCode)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("p-Value")) +
+      scale_y_log10()
+
+
+```
+
+
+
+
+```{r warning=FALSE}
+
+
+ggplot(data = meanLogPvalues,
+        mapping = aes(x = NumComp, y = NumRejected)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      scale_color_manual(values = twoColors) +
+      WasatchTheme + 
+      ggtitle(paste("SIMCA False Negatives - Sample", sampleCode)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("Num False Negatives")) +
+      geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+
+```
+
+## Repeat with all Samples
+
+The last plots might be insight to see for all samples.
+
+```{r warning=FALSE}
+
+maxComponents <- 8
+alphaLevel <- 0.0001  
+
+```
+
+The settings are `r maxComponents` max components and an alpha level of `r alphaLevel`.
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+
+```{r warning=FALSE, message=FALSE}
+
+
+falseAssignments <- data.frame()
+
+for (sampleCode in sampleNames) {
+
+  # use Enlighten spectra format
+  trainSpectraInput <- enlightenSpectraListTrain[[sampleCode]]
+
+  testSpectraInput <- enlightenSpectraListTest[[sampleCode]]
+  
+  
+      
+    # this will be the loop...
+    
+    for (numComp in seq(maxComponents)) {
+      
+      # Train
+      
+      simcaModel <- analysisSIMCA(trainSpectraInput, 
+                                  SIMCAcomp = numComp, 
+                                  preProcessingParameters = parameters)
+      
+      pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                              model = simcaModel)
+      
+      rejectTrain <- pTrain < alphaLevel
+      
+      # Test
+      
+      simcaPrediction <- predictSIMCA(simcaModel, 
+                                      testSpectraInput, 
+                                      alphaLevel = alphaLevel)
+      
+      pTest <- analysisCV(testSpectraInput, simcaModel)
+      
+      rejectTest <- pTest < alphaLevel
+    
+      # Combine Train/Test
+      pValues <- data.frame(NumComp = numComp,
+                            Sample = sampleCode,
+                            pValue = c(pTrain, pTest),
+                            Result = c(rejectTrain, rejectTest),
+                            Type = c(rep("Train", length(pTrain)),
+                                     rep("Test", length(pTest))))
+
+      
+      # False Positives?
+      pOtherSamples <- data.frame()
+      
+      for (otherSample in sampleNames) {
+        
+        if (otherSample != sampleCode) {
+            # skip "own" spectra
+            spectraInput <- enlightenSpectraList[[otherSample]]
+            pOthers <- analysisCV(spectraInput, simcaModel)
+            acceptedOthers <- pOthers > alphaLevel
+            
+            pOtherSamples <- rbind(pOtherSamples, data.frame(
+                            NumComp = numComp,
+                            Sample = otherSample,
+                            pValue = pOthers,
+                            Result = acceptedOthers,
+                            Type = "Other"))
+        }
+      }
+      
+      
+      falseAssignment <- rbind(pValues, pOtherSamples) %>% 
+        mutate(Model = sampleCode) %>% 
+        group_by(Type, NumComp, Sample, Model) %>% 
+        summarize(NumFalse = sum(Result),
+                  .groups = "drop") %>% 
+        ungroup()
+
+    
+      falseAssignments <- rbind(falseAssignments, falseAssignment)
+      
+    }
+
+
+}
+
+
+```
+
+
+
+```{r warning=FALSE,message=FALSE}
+
+for (sampleCode in sampleNames) {
+  
+
+    falseAssignmentPlot <- ggplot(data = subset(falseAssignments, Model == sampleCode),
+        mapping = aes(x = NumComp, y = NumFalse)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      WasatchTheme + 
+      ggtitle(paste("False Assign. - Model", sampleCode, "- alpha =", alphaLevel)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("Num False Assignments")) +
+      scale_y_continuous(limits = c(0, 12), n.breaks = 4) +
+      geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+    print(falseAssignmentPlot)
+  
+}
+    
+```
+
+
+### Discussion
+
+Seems like for alpha = 0.001 the "other sample" danger is small. The biggest issue is the rejection of many test samples if the training is too specific (overfitting) with 4 or more components.
+
+Two or three components might be nice to have, though, for some model flexibility. Lowering alpha to 1e-4, we can increase the flexibility to 2 or 3 components and only see 1 false negative test sample for sample 002, and one false negative training sample for 001 (which seems to be an outlier in the PCA). At 4 components, the numbers of false assignment increases for most samples, the model is overfitted.
+
+This seems to point towards 2 components and a low alpha value.
+
+
+# Cross Validation
+
+The previous approach was akin to a single run of a 3-fold random CV.
+
+Next we repeatedly split the training set $n$-fold and determine a model from all training samples, excluding the fraction $1/n$ of the samples set aside for cross validation.
+
+Repeating this split can occur in three ways:
+
+* Split in $n$ groups in sequence. This yields $n$ sequential $n$-fold CV runs.
+
+* Randomly pick samples, but make sure every sample is used only once. This also yields $n$ but now random $n$-fold CV runs
+
+* Repeatedly randomly pick $1/n^{th}$ of the samples for cross validation. The number of repeat runs is not limited in this case.
+
+We will pick the latter approach here for now. We might expand the CV routines to accommodate the other options at a latter time.
+
+To develop the method, we will pick a single sample for now.
+
+
+```{r warning=FALSE}
+
+maxComponents <- 8
+alphaLevel <- 0.0001  
+
+```
+
+The settings are `r maxComponents` max components and an alpha level of `r alphaLevel`.
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+```{r}
+
+set.seed(1234567)
+
+# one sample for now
+sampleCode <- sampleNames[1]
+
+# in how many parts to split the data set into train and CV-test
+numFolds <- 5
+
+# how often to randomly pick CV-test samples from the set - in total 
+numRepeats <- 30
+
+
+
+# get spectrum labels
+spectrumLabels <- experiments %>% 
+  filter(ProductName == sampleCode) %>% 
+  pull(Sample)
+
+
+# spectra for this sample
+spectraInput <- enlightenSpectraList[[sampleCode]]
+columnNames <- names(spectraInput)
+xAxisColumns <- grep(pattern = "_", x = columnNames, invert = TRUE)
+spectraNames <- columnNames[-xAxisColumns]
+
+numSampleSpectra <- length(spectraNames)
+numTestSpectra <- round(numSampleSpectra / numFolds)
+
+spectraInputSample <- spectraInput
+
+# where to collect the results
+falseAssignments <- data.frame()
+
+for (repeatID in seq(numRepeats)) {
+  # repeated random CV
+  
+    # single n-fold random CV
+    
+    # pick test samples and split spectra
+    testSampleNames <- sample(x = spectrumLabels, numTestSpectra)
+    testSampleCols <- which(columnNames %in% testSampleNames)
+    
+    testSpectraInput <- spectraInputSample[, c(xAxisColumns, testSampleCols)]
+    trainSpectraInput <- spectraInputSample[, -testSampleCols]
+
+    
+          
+    # this will be the loop through the num components...
+    
+    for (numComp in seq(maxComponents)) {
+      
+      # Train
+      
+      simcaModel <- analysisSIMCA(trainSpectraInput, 
+                                  SIMCAcomp = numComp, 
+                                  preProcessingParameters = parameters)
+      
+      pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                              model = simcaModel)
+      
+      rejectTrain <- pTrain < alphaLevel
+      
+      # Test
+      
+      simcaPrediction <- predictSIMCA(simcaModel, 
+                                      testSpectraInput, 
+                                      alphaLevel = alphaLevel)
+      
+      pTest <- analysisCV(testSpectraInput, simcaModel)
+      
+      rejectTest <- pTest < alphaLevel
+    
+      # Combine Train/Test
+      pValues <- data.frame(NumComp = numComp,
+                            Sample = sampleCode,
+                            pValue = c(pTrain, pTest),
+                            Result = c(rejectTrain, rejectTest),
+                            Type = c(rep("Train", length(pTrain)),
+                                     rep("Test", length(pTest))))
+
+      
+      # False Positives?
+      pOtherSamples <- data.frame()
+      
+      for (otherSample in sampleNames) {
+        
+        if (otherSample != sampleCode) {
+            # skip "own" spectra
+            spectraInput <- enlightenSpectraList[[otherSample]]
+            pOthers <- analysisCV(spectraInput, simcaModel)
+            acceptedOthers <- pOthers > alphaLevel
+            
+            pOtherSamples <- rbind(pOtherSamples, data.frame(
+                            NumComp = numComp,
+                            Sample = otherSample,
+                            pValue = pOthers,
+                            Result = acceptedOthers,
+                            Type = "Other"))
+        }
+      }
+      
+      
+      falseAssignment <- rbind(pValues, pOtherSamples) %>% 
+        mutate(Model = sampleCode,
+               RepeatID = repeatID) %>% 
+        group_by(Type, NumComp, Sample, Model, RepeatID) %>% 
+        summarize(NumFalse = sum(Result),
+                  .groups = "drop") %>% 
+        ungroup()
+
+    
+      falseAssignments <- rbind(falseAssignments, falseAssignment)
+      
+    }
+  
+}
+
+
+
+```
+
+
+For this sample we find the following number of false assignments at each repeat:
+
+
+```{r warning=FALSE,message=FALSE}
+
+for (repeatID in seq(numRepeats)) {
+  
+
+    falseAssignmentPlot <- ggplot(data = subset(falseAssignments, RepeatID == repeatID),
+        mapping = aes(x = NumComp, y = NumFalse)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      WasatchTheme + 
+      ggtitle(paste("False Assign. - Repeat", repeatID, "- alpha =", alphaLevel)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("Num False Assignments")) +
+      scale_y_continuous(limits = c(0, 12), n.breaks = 4) +
+      geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+    print(falseAssignmentPlot)
+  
+}
+    
+```
+
+
+On average, this means:
+
+```{r warning=FALSE,message=FALSE}
+
+falseAssignments %>% 
+  group_by(Type, NumComp) %>% 
+  summarize(MeanFalse = mean(NumFalse)) %>% 
+
+ggplot(mapping = aes(x = NumComp, y = MeanFalse)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      WasatchTheme + 
+      ggtitle(paste("False Assign. - Sample", sampleCode, "- alpha =", alphaLevel)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("Avg False Assignments")) +
+      geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+
+
+```
+
+## Repeated Random CV for all Samples
+
+We now run this repeated random train/test split (CV) for all samples.
+
+
+```{r warning=FALSE}
+
+maxComponents <- 8
+alphaLevel <- 1e-5  
+
+```
+
+The settings are `r maxComponents` max components and an alpha level of `r alphaLevel`.
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+```{r}
+
+set.seed(1234567)
+
+
+# in how many parts to split the data set into train and CV-test
+numFolds <- 5
+
+# how often to randomly pick CV-test samples from the set - in total 
+numRepeats <- 20
+
+
+# where to collect the results
+falseAssignments <- data.frame()
+
+
+for (sampleCode in sampleNames) {
+
+    
+    # get spectrum labels
+    spectrumLabels <- experiments %>% 
+      filter(ProductName == sampleCode) %>% 
+      pull(Sample)
+    
+    
+    # spectra for this sample
+    spectraInput <- enlightenSpectraList[[sampleCode]]
+    columnNames <- names(spectraInput)
+    xAxisColumns <- grep(pattern = "_", x = columnNames, invert = TRUE)
+    spectraNames <- columnNames[-xAxisColumns]
+    
+    numSampleSpectra <- length(spectraNames)
+    numTestSpectra <- round(numSampleSpectra / numFolds)
+    
+    spectraInputSample <- spectraInput
+    
+    
+    for (repeatID in seq(numRepeats)) {
+      # repeated random CV
+      
+        # single n-fold random CV
+        
+        # pick test samples and split spectra
+        testSampleNames <- sample(x = spectrumLabels, numTestSpectra)
+        testSampleCols <- which(columnNames %in% testSampleNames)
+        
+        testSpectraInput <- spectraInputSample[, c(xAxisColumns, testSampleCols)]
+        trainSpectraInput <- spectraInputSample[, -testSampleCols]
+    
+        
+              
+        # this will be the loop through the num components...
+        
+        for (numComp in seq(maxComponents)) {
+          
+          # Train
+          
+          simcaModel <- analysisSIMCA(trainSpectraInput, 
+                                      SIMCAcomp = numComp, 
+                                      preProcessingParameters = parameters)
+          
+          pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                                  model = simcaModel)
+          
+          rejectTrain <- pTrain < alphaLevel
+          
+          # Test
+          
+          simcaPrediction <- predictSIMCA(simcaModel, 
+                                          testSpectraInput, 
+                                          alphaLevel = alphaLevel)
+          
+          pTest <- analysisCV(testSpectraInput, simcaModel)
+          
+          rejectTest <- pTest < alphaLevel
+        
+          # Combine Train/Test
+          pValues <- data.frame(NumComp = numComp,
+                                Sample = sampleCode,
+                                pValue = c(pTrain, pTest),
+                                Result = c(rejectTrain, rejectTest),
+                                Type = c(rep("Train", length(pTrain)),
+                                         rep("Test", length(pTest))))
+    
+          
+          # False Positives?
+          pOtherSamples <- data.frame()
+          
+          for (otherSample in sampleNames) {
+            
+            if (otherSample != sampleCode) {
+                # skip "own" spectra
+                spectraInput <- enlightenSpectraList[[otherSample]]
+                pOthers <- analysisCV(spectraInput, simcaModel)
+                acceptedOthers <- pOthers > alphaLevel
+                
+                pOtherSamples <- rbind(pOtherSamples, data.frame(
+                                NumComp = numComp,
+                                Sample = otherSample,
+                                pValue = pOthers,
+                                Result = acceptedOthers,
+                                Type = "Other"))
+            }
+          }
+          
+          
+          falseAssignment <- rbind(pValues, pOtherSamples) %>% 
+            mutate(Model = sampleCode,
+                   RepeatID = repeatID) %>% 
+            group_by(Type, NumComp, Sample, Model, RepeatID) %>% 
+            summarize(NumFalse = sum(Result),
+                      .groups = "drop") %>% 
+            ungroup()
+    
+        
+          falseAssignments <- rbind(falseAssignments, falseAssignment)
+          
+        }
+      
+    }
+    
+}
+
+```
+
+
+On average, we now find for all samples:
+
+
+
+```{r warning=FALSE,message=FALSE}
+
+avgFalseAssignments <- falseAssignments %>% 
+  group_by(Type, NumComp, Model) %>% 
+  summarize(MeanFalse = mean(NumFalse)) %>% 
+  ungroup()
+
+for (sampleName in sampleNames) {
+
+  avgPlot <- ggplot(data = subset(avgFalseAssignments, Model == sampleName),
+                    mapping = aes(x = NumComp, y = MeanFalse)) + 
+        geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+        geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+        WasatchTheme + 
+        ggtitle(paste("False Assign. - Sample", sampleName, "- alpha =", alphaLevel)) + 
+        xlab(paste("Number of Components")) + 
+        ylab(paste("Avg False Assignments")) +
+        scale_y_continuous(limits = c(0, 1.5)) +
+        geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+  print(avgPlot)
+  
+}
+
+
+
+```
+
+Here the total number of samples of each type (in each run) were for reference:
+
+* Train - 48 (4/5 of 60)
+* Test - 12 (1/5 of 60)
+* Other - 180 (3 other samples out of 4)
+
+The combination of a confidence level of 1e-5 with 2 PCA components as the meta parameters leads to a good performance for all products.
+
+
+\newpage
+
+# Repated CV for different confidence thresholds
+
+We next will also rotate through different alpha levels.
+
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+```{r}
+
+set.seed(1234567)
+
+maxComponents <- 8
+
+# roatate throgh different alphas
+alphaLevels <- c(1e-4, 3e-5, 1e-5, 3e-6, 1e-6, 3e-7)  
+
+
+# in how many parts to split the data set into train and CV-test
+numFolds <- 5
+
+# how often to randomly pick CV-test samples from the set - in total 
+numRepeats <- 20
+
+
+# where to collect the results
+falseAssignments <- data.frame()
+
+
+for (sampleCode in sampleNames) {
+
+    
+    # get spectrum labels
+    spectrumLabels <- experiments %>% 
+      filter(ProductName == sampleCode) %>% 
+      pull(Sample)
+    
+    
+    # spectra for this sample
+    spectraInput <- enlightenSpectraList[[sampleCode]]
+    columnNames <- names(spectraInput)
+    xAxisColumns <- grep(pattern = "_", x = columnNames, invert = TRUE)
+    spectraNames <- columnNames[-xAxisColumns]
+    
+    numSampleSpectra <- length(spectraNames)
+    numTestSpectra <- round(numSampleSpectra / numFolds)
+    
+    spectraInputSample <- spectraInput
+    
+    
+    for (alphaLevel in alphaLevels) {
+        
+        for (repeatID in seq(numRepeats)) {
+          # repeated random CV
+          
+            # single n-fold random CV
+            
+            # pick test samples and split spectra
+            testSampleNames <- sample(x = spectrumLabels, numTestSpectra)
+            testSampleCols <- which(columnNames %in% testSampleNames)
+            
+            testSpectraInput <- spectraInputSample[, c(xAxisColumns, testSampleCols)]
+            trainSpectraInput <- spectraInputSample[, -testSampleCols]
+        
+            
+                  
+            # this will be the loop through the num components...
+            
+            for (numComp in seq(maxComponents)) {
+              
+              # Train
+              
+              simcaModel <- analysisSIMCA(trainSpectraInput, 
+                                          SIMCAcomp = numComp, 
+                                          preProcessingParameters = parameters)
+              
+              pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                                      model = simcaModel)
+              
+              rejectTrain <- pTrain < alphaLevel
+              
+              # Test
+              
+              simcaPrediction <- predictSIMCA(simcaModel, 
+                                              testSpectraInput, 
+                                              alphaLevel = alphaLevel)
+              
+              pTest <- analysisCV(testSpectraInput, simcaModel)
+              
+              rejectTest <- pTest < alphaLevel
+            
+              # Combine Train/Test
+              pValues <- data.frame(NumComp = numComp,
+                                    Sample = sampleCode,
+                                    pValue = c(pTrain, pTest),
+                                    Result = c(rejectTrain, rejectTest),
+                                    Type = c(rep("Train", length(pTrain)),
+                                             rep("Test", length(pTest))))
+        
+              
+              # False Positives?
+              pOtherSamples <- data.frame()
+              
+              for (otherSample in sampleNames) {
+                
+                if (otherSample != sampleCode) {
+                    # skip "own" spectra
+                    spectraInput <- enlightenSpectraList[[otherSample]]
+                    pOthers <- analysisCV(spectraInput, simcaModel)
+                    acceptedOthers <- pOthers > alphaLevel
+                    
+                    pOtherSamples <- rbind(pOtherSamples, data.frame(
+                                    NumComp = numComp,
+                                    Sample = otherSample,
+                                    pValue = pOthers,
+                                    Result = acceptedOthers,
+                                    Type = "Other"))
+                }
+              }
+              
+              
+              falseAssignment <- rbind(pValues, pOtherSamples) %>% 
+                mutate(Model = sampleCode,
+                       RepeatID = repeatID,
+                       Alpha = alphaLevel) %>% 
+                group_by(Type, NumComp, Sample, Model, RepeatID, Alpha) %>% 
+                summarize(NumFalse = sum(Result),
+                          .groups = "drop") %>% 
+                ungroup()
+        
+            
+              falseAssignments <- rbind(falseAssignments, falseAssignment)
+              
+            }
+          
+        }
+    }
+}
+
+```
+
+
+On average, we now find for all samples:
+
+
+
+```{r warning=FALSE,message=FALSE}
+
+avgFalseAssignments <- falseAssignments %>% 
+  group_by(Type, NumComp, Model, Alpha) %>% 
+  summarize(MeanFalse = mean(NumFalse)) %>% 
+  ungroup()
+
+
+
+for (sampleName in sampleNames) {
+
+  avgPlot <- ggplot(data = subset(avgFalseAssignments, Model == sampleName),
+                    mapping = aes(x = NumComp, y = MeanFalse)) + 
+        geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+        geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+        WasatchTheme + 
+        ggtitle(paste("Avg. False Assignments -", sampleName)) + 
+        xlab(paste("Number of Components")) + 
+        ylab(paste("Avg False Assignments")) +
+        scale_y_continuous(limits = c(0, 1.5)) +
+        geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4) + 
+        facet_wrap(.~factor(Alpha, levels = alphaLevels))
+
+  print(avgPlot)
+  
+}
+
+
+
+```
+
+
+Again, the number of false assignments is relative to the total number of samples:
+
+* Train - 48 (4/5 of 60)
+* Test - 12 (1/5 of 60)
+* Other - 180 (3 other samples of 60 each)
+
+If we just print the wrong assignments for reasonable model complexities (up to 3):
+
+```{r}
+avgFalseAssignments %>% 
+  filter(MeanFalse > 0) %>% 
+  filter(NumComp < 4) %>% 
+  
+kable(caption = "False Assignments by Model, Type of Test, and Model Parameters",
+      align = "r", digits = c(NA, 1, NA, 6, 2))
+```
+
+
+
+We notice one false positive for a low alpha value of 1e-6 and the sample featuring two distinct groups in the sample set (Tresiba). 
+
+We also see one training sample rejected with a tight setting of the threshold.
+
+Otherwise we see the expected onset of overfitting with increasing number of components, leading to a larger number of test samples being rejected, unless the alpha value is lowered.
+
+We might want to adapt the alpha level by sample:
+
+* Novorapid, Actrapid - 1e-6
+* Mixtard - maybe even lower than 1e-6
+* Tresiba - 3e-5
+
+\newpage
+
+# Confusion Matrix
+
+We finally repeat the same processing with all samples investigated.
+
+We here again determine the number of false positives and false negatives. This here uses the original 40/20 random train/test split.
+
+```{r}
+
+writeEnlighten <- function(spectraInput, baseFileName){
+  
+  #
+  # minimal 'single' Enlighten file - empty line, then data
+  #
+  
+  numCols <- length(spectraInput)
+  dataLabel <- "_"
+  dataCols <- grep(pattern = dataLabel, x = names(spectraInput))
+  numXcols <- numCols - length(dataCols)
+  nonDataCols <- seq(numXcols)
+  
+  # remove extension
+  baseFileName <- str_remove(baseFileName, "\\.[a-zA-Z0-9]+$")
+  
+  # write individual files
+  for (colIndex in dataCols) {
+    
+    fileName <- paste0(baseFileName, "-", colIndex - numXcols, ".csv")
+
+    # 'header' plus empty line
+    writeLines("Minimal R Export\n", fileName)
+
+    singleSpectrum <- spectraInput[, c(nonDataCols, colIndex)]
+    names(singleSpectrum)[numXcols + 1] <- "Processed"
+    
+    write_csv(singleSpectrum, fileName, 
+              append = TRUE, col_names = TRUE)
+  }
+  
+}
+```
+
+
+```{r warning=FALSE, message=FALSE, comment = ""}
+
+
+# write new models
+writeModels <- FALSE
+
+# also write test spectra
+writeTest <- FALSE
+
+
+# model parameters
+pickComponents <- 3
+alphaLevel <- 1e-5
+
+
+# preprocessing settings
+# parameters for preprocessing: interpolation, SG, min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+resultsTable <- data.frame()
+
+
+for (sampleName in sampleNames) {
+  
+  # use Enlighten spectra format
+  trainSpectraInput <- enlightenSpectraListTrain[[sampleName]]
+  
+  alphaLevel <- alphaLevels[sampleName]
+
+  simcaModel <- analysisSIMCA(trainSpectraInput, 
+                              SIMCAcomp = pickComponents, 
+                              preProcessingParameters = parameters)
+  
+  if (writeModels) {
+    # save
+    setwd(homePath)
+    setwd("Models")
+  
+    fileName <- paste0("Sample-", sampleName)
+    saveSIMCA(simcaModel, fileName)
+  }
+  
+  
+  # test all others
+  wrongAccepted <- 0
+  wrongTested <- 0
+  for (wrongSample in sampleNames) {
+    if (wrongSample != sampleName) {
+      # actual sample
+      testSpectraInput <- enlightenSpectraList[[wrongSample]]
+
+      simcaPrediction <- predictSIMCA(simcaModel, 
+                                      testSpectraInput, 
+                                      alphaLevel = alphaLevel)
+      
+      wrongAccepted <- wrongAccepted + sum(simcaPrediction$member)
+      wrongTested <- wrongTested + length(simcaPrediction$member)
+    }
+  }
+  
+  # actual sample
+  testSpectraInput <- enlightenSpectraListTest[[sampleName]]
+  
+  
+  if (writeTest) {
+    # write copy for front end test
+    setwd(homePath)
+    setwd("TestSpectra")
+    baseFileName <- paste0("TestSpectrum-", sampleName)
+    writeEnlighten(testSpectraInput, baseFileName)
+  }
+  
+  
+
+  simcaPrediction <- predictSIMCA(simcaModel, 
+                                  testSpectraInput, 
+                                  alphaLevel = alphaLevel)
+  
+  numRejected <- sum(! simcaPrediction$member)
+  numTested <- length(simcaPrediction$member)
+  
+  simcaPlot <- plotSIMCA(simcaModel = simcaModel, prediction = simcaPrediction, 
+            alphaLevel = alphaLevel, printPlot = FALSE)
+  simcaPlot <- simcaPlot + ggtitle(paste("SIMCA", sampleName, sep = " - "), 
+                    subtitle = paste("False Neg:", numRejected, "of", numTested,
+                                     " --- ",
+                                    "False Pos:", wrongAccepted, "of", wrongTested))
+  print(simcaPlot)
+  
+  resultsTable <- rbind(resultsTable, data.frame(Sample = sampleName,
+                                                 FalseNegative = numRejected,
+                                                 ActualPositive = numTested,
+                                                 FalsePositive = wrongAccepted,
+                                                 ActualNegative = wrongTested))
+  
+}
+```
+
+Here we used the following parameters for the preprocessing:
+
+```{r comment = ""}
+str(parameters)
+```
+
+and for the model thresholds:
+
+```{r}
+cat("Number of PCA Components in Model (flexibility):", pickComponents, "\n")
+cat("Confidence Limit (Ratio of allowd false negatives):", alphaLevel, "\n")
+```
+
+
+The test spectra assignment results are listed below:
+
+```{r}
+kable(resultsTable,
+      caption = "False Negatives (sample incorrectly not accepted) and False Positives (wrong sample accepted) for each model, tested against all samples, the actual model samples and all other samples")
+```
+
+
+\newpage
+
+# Models Based on Full Sample Set
+
+We now determine the models based on the full sample set.
+
+```{r warning=FALSE, message=FALSE, comment = ""}
+
+
+# write new models
+writeModels <- FALSE
+
+
+# model parameters
+pickComponents <- 2
+alphaLevel <- 1e-5
+
+# alphaLevels <- c(1e-6, 1e-6, 3e-7, 3e-5)
+# names(alphaLevels) <- sampleNames
+
+# > sampleNames
+# [1] "NovoRapid"  "Actrapid"   "Mixtard 40" "Tresiba"   
+# * Novorapid, Actrapid - 1e-6
+# * Mixtard - maybe even lower than 1e-6
+# * Tresiba - 3e-5
+
+
+# preprocessing settings
+# parameters for preprocessing: interpolation, SG, min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 300,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+
+for (sampleName in sampleNames) {
+  
+  # use Enlighten spectra format
+  spectraInput <- enlightenSpectraList[[sampleName]]
+
+  simcaModel <- analysisSIMCA(spectraInput, 
+                              SIMCAcomp = pickComponents, 
+                              preProcessingParameters = parameters)
+  
+  if (writeModels) {
+    # save
+    setwd(homePath)
+    setwd("Models")
+  
+    fileName <- sampleName
+    saveSIMCA(simcaModel, fileName)
+  }
+  
+  
+}
+```
+
+
+
+
+
+\newpage
+
+# Models with Multiple Levels of Flexibility
+
+For maximum ability to test we also determine models at additional levels of flexibility.
+
+
+
+
+
+
+
