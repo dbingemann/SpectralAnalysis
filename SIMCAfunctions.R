@@ -64,21 +64,25 @@ simcaParameters <- function() {
 require(pracma)
 
 interp <- function(x, y, xi) {
-    if (xi[1] < x[1]) {
-        # extrapolate
-        y0 <- y[1] # - (x[1]-xi[1]) * (y[2]-y[1])/(x[2]-x[1])
-        x <- c(xi[1], x)
-        y <- c(y0, y)
+    if ((length(x) > 0) & (length(y) > 0) & (length(xi) > 0)) {
+        if (xi[1] < x[1]) {
+            # extrapolate
+            y0 <- y[1] # - (x[1]-xi[1]) * (y[2]-y[1])/(x[2]-x[1])
+            x <- c(xi[1], x)
+            y <- c(y0, y)
+        }
+        ni <- length(xi)
+        n <- length(x)
+        if (xi[ni] > x[n]) {
+            # extrapolate
+            yn <- y[n] # + (xi[ni]-x[n]) * (y[n]-y[ni])/(x[n]-x[n-1])
+            x <- c(x, xi[ni])
+            y <- c(y, yn)
+        }
+        return(interp1(x = x, y = y, xi = xi))
+    } else {
+        return(NULL)
     }
-    ni <- length(xi)
-    n <- length(x)
-    if (xi[ni] > x[n]) {
-        # extrapolate
-        yn <- y[n] # + (xi[ni]-x[n]) * (y[n]-y[ni])/(x[n]-x[n-1])
-        x <- c(x, xi[ni])
-        y <- c(y, yn)
-    }
-    return(interp1(x = x, y = y, xi = xi))
 }
 
 
@@ -178,15 +182,20 @@ preProcessing <- function(spectraInput, preProcessingParameters) {
         interpSpectrum <- interp(x = wavenumbers,
                                  y = spectrum,
                                  xi = interpWavenumbers)
-        
-        spectrumSG <- savitzkyGolay(interpSpectrum, 
-                                    m = derivOrder,  # order
-                                    p = polynomialSG,  # polynomial fit
-                                    w = 2 * windowHalfWidth + 1) # window
-        
-        zeroPadding <- rep(0, windowHalfWidth)
-        
-        derivative <- c(zeroPadding, spectrumSG, zeroPadding)
+
+        if (length(interpSpectrum) > 0) {
+
+            spectrumSG <- savitzkyGolay(interpSpectrum, 
+                                        m = derivOrder,  # order
+                                        p = polynomialSG,  # polynomial fit
+                                        w = 2 * windowHalfWidth + 1) # window
+            
+            zeroPadding <- rep(0, windowHalfWidth)
+            
+            derivative <- c(zeroPadding, spectrumSG, zeroPadding)
+        } else {
+            derivative <- NA
+        }
         
         spectraCombinedDerivList[[index]] <- data.frame(SpectrumID = index,
                                                         Pixel = interpPixels,

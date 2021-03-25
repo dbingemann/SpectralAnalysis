@@ -284,21 +284,28 @@ server <- function(input, output, session) {
         
         # also add to validation log file for each day
         spectrum <- spectrumInput()
-
-        for (index in seq_along(results)) {
-            
-            modelName <- names(results)[index]
-            predictions <- results[[modelName]]
-            member <- predictions$member
-            names(member) <- NULL
-            
-            cat(modelName, ":", ifelse(member, "PASS", "---"), "\n")
-            
-            # add to log file line
-            addLogLine(modelName, spectrum, predictions)
-            
-        }
         
+        if (length(results) == 0) {
+            cat("No analysis")
+        } else {
+
+            for (index in seq_along(results)) {
+                
+                modelName <- names(results)[index]
+                predictions <- results[[modelName]]
+                member <- predictions$member
+                names(member) <- NULL
+                
+                if (is.na(member)) {
+                    member <- FALSE
+                }
+                cat(modelName, ":", ifelse(member, "PASS", "---"), "\n")
+                
+                # add to log file line
+                addLogLine(modelName, spectrum, predictions)
+                
+            }
+        }
     })
         
         
@@ -308,19 +315,23 @@ server <- function(input, output, session) {
         results <- prediction()
         plotModel <- "none"
         
-        for (index in seq_along(results)) {
-            
-            modelName <- names(results)[index]
-            predictions <- results[[modelName]]
-            member <- predictions$member
-            names(member) <- NULL
-            
-            if (member) {
-                if (plotModel == "none") {
-                    plotModel <- modelName
-                } else {
-                    # not a single match
-                    plotModel <- "multi"
+        if (length(results) > 0) {
+            for (index in seq_along(results)) {
+                
+                modelName <- names(results)[index]
+                predictions <- results[[modelName]]
+                member <- predictions$member
+                names(member) <- NULL
+                
+                if (! is.na(member)) {
+                    if (member) {
+                        if (plotModel == "none") {
+                            plotModel <- modelName
+                        } else {
+                            # not a single match
+                            plotModel <- "multi"
+                        }
+                    }
                 }
             }
         }
