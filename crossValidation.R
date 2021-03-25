@@ -49,10 +49,17 @@ analysisCV <- function(spectraInput, model = NULL, numComp = NULL, alphaLevel = 
         if (is.null(numComp)) {
             stop("Need to provide number of components for CV if no model is provided")
         } else {
-            model <- analysisSIMCA(spectraInput, SIMCAcomp = numComp, alphaLevel = alphaLevel)
+            # alpha now in model.
+            # if passing NULL, model will pick global default
+            model <- analysisSIMCA(spectraInput, 
+                                   SIMCAcomp = numComp, 
+                                   alphaLevel = alphaLevel)
         }
     }
+    
     simcaModel <- model
+    
+    # alpha now in model
     predictions <- predictSIMCA(simcaModel, spectraInput)
 
     # return a number for every sample
