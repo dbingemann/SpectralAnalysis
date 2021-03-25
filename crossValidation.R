@@ -33,7 +33,7 @@
 
 
 
-analysisCV <- function(spectraInput, model = NULL, numComp = NULL) {
+analysisCV <- function(spectraInput, model = NULL, numComp = NULL, alphaLevel = NULL) {
    
     #   wrapper
     #
@@ -49,7 +49,7 @@ analysisCV <- function(spectraInput, model = NULL, numComp = NULL) {
         if (is.null(numComp)) {
             stop("Need to provide number of components for CV if no model is provided")
         } else {
-            model <- analysisSIMCA(spectraInput, SIMCAcomp = numComp)
+            model <- analysisSIMCA(spectraInput, SIMCAcomp = numComp, alphaLevel = alphaLevel)
         }
     }
     simcaModel <- model
