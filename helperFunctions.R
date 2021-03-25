@@ -44,7 +44,7 @@ addLogLine <- function(modelName, spectrum, predictions) {
     if (length(currentLogFile) == 0) {
         currentLogFile <- paste0(logFileBaseName, "_", currentDate, ".log")
         newLogFilePath <- paste0(logFilePath, "/", currentLogFile)
-        headerLine <- "FileName,TimeStamp,Model,Member,ScoreDistance,OrthogonalDistance,AlphaLevel,ThresholdSd,ThresholdOD"
+        headerLine <- "FileName,TimeStamp,Model,Member,ScoreDistance,OrthogonalDistance,AlphaLevel,ThresholdSD,ThresholdOD"
         writeLines(headerLine, newLogFilePath)
     }
     

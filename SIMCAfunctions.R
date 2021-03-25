@@ -240,9 +240,12 @@ preProcessing <- function(spectraInput, preProcessingParameters) {
 
 
 
-analysisSIMCA <- function(spectraInput, preProcessingParameters = NULL, SIMCAcomp = NULL) {
+analysisSIMCA <- function(spectraInput, 
+                          preProcessingParameters = NULL, 
+                          SIMCAcomp = NULL,
+                          alphaLevel = NULL) {
     #
-    # wrapper to call SIMCA model calc with not pre-processed Enlighten spectra
+    # wrapper to call SIMCA model calc with not yet pre-processed Enlighten spectra
     #
     
     # allow for global settings
@@ -258,18 +261,32 @@ analysisSIMCA <- function(spectraInput, preProcessingParameters = NULL, SIMCAcom
         SIMCAcomp <- parameters$SIMCAcomp
     }   
     
+    if (is.null(alphaLevel)) {
+        # get global values form start of file
+        parameters <- simcaParameters()
+        alphaLevel <- parameters$alphaLevel
+    }   
+    
     spectra <- preProcessing(spectraInput, preProcessingParameters)
-    simcaModel <- analysisSIMCApreProcessed(spectra, SIMCAcomp, preProcessingParameters)
+    simcaModel <- analysisSIMCApreProcessed(spectra, 
+                                            SIMCAcomp, 
+                                            alphaLevel,
+                                            preProcessingParameters)
     return(simcaModel)
 }
 
 
-analysisSIMCApreProcessed <- function(spectra, SIMCAcomp = NULL, preProcessingParameters) {
+analysisSIMCApreProcessed <- function(spectra, 
+                                      SIMCAcomp = NULL,
+                                      alphaLevel = NULL,
+                                      preProcessingParameters) {
     
     #
     #   performs SIMCA analysis
     #   input: pre-processed spectra in matrix format - pixels going down rows
-    #           spectra contain attr for preprocessing
+    #           spectra contain attr string for preprocessing check
+    #           num components to use in PCA
+    #           alpha level for prediction - each model can have their own threshold
     #   output: simca model results as a list
     #
     
@@ -279,11 +296,21 @@ analysisSIMCApreProcessed <- function(spectra, SIMCAcomp = NULL, preProcessingPa
         SIMCAcomp <- parameters$SIMCAcomp
     }   
     
+    if (is.null(alphaLevel)) {
+        # get global values form start of file
+        parameters <- simcaParameters()
+        alphaLevel <- parameters$alphaLevel
+    }   
+    
     simcaModel <- list()
     
     preProcessing <- attr(spectra, "preProcessing")
     simcaModel[["preProcessing"]] <- preProcessing
     simcaModel[["preProcessingParameters"]] <- preProcessingParameters
+    
+    # each model can have their 'own' alpha level
+    simcaModel[["alphaLevel"]] <- alphaLevel
+    
     
     # PCA
     X <- t(spectra)
@@ -355,9 +382,8 @@ thresholdsSIMCA <- function(simcaModel, alphaLevel = NULL) {
     #
     
     if (is.null(alphaLevel)) {
-        # get global values form start of file
-        parameters <- simcaParameters()
-        alphaLevel <- parameters$alphaLevel
+        # get alpha level that is part of the model
+        alphaLevel <- simcaModel$alphaLevel
     }   
     
     
@@ -434,8 +460,8 @@ predictSIMCA <- function(simcaModel, newSpectraInput, alphaLevel = NULL) {
     #
     
     if (is.null(alphaLevel)) {
-        parameters <- simcaParameters()
-        alphaLevel <- parameters$alphaLevel
+        # get alpha from model
+        alphaLevel <- simcaModel$alphaLevel
     }
     
     # get rest of parameters from model
@@ -463,8 +489,8 @@ predictSIMCApreProcessed <- function(simcaModel, newSpectra, alphaLevel = NULL) 
     # returns both distances for each spectrum, also assignment (yes/no), and thresholds used
     
     if (is.null(alphaLevel)) {
-        parameters <- simcaParameters()
-        alphaLevel <- parameters$alphaLevel
+        # get alpha from model
+        alphaLevel <- simcaModel$alphaLevel
     }
     
     
@@ -695,8 +721,12 @@ plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
     #
     
     if (is.null(alphaLevel)) {
-        parameters <- simcaParameters()
-        alphaLevel <- parameters$alphaLevel
+        if (is.null(simcaModel)) {
+            parameters <- simcaParameters()
+            alphaLevel <- parameters$alphaLevel
+        } else {
+            alphaLevel <- simcaModel$alphaLevel
+        }
     }
     
     distPlot <- NULL
@@ -710,6 +740,8 @@ plotSIMCA <- function(simcaModel = NULL, prediction = NULL,
         distDF <- rbind(distDF, data.frame(x = simcaModel$scoreDistances,
                                            y = simcaModel$orthogonalDistances,
                                            Type = "Train"))
+        
+        # this alpha here is the transparency of the plot, nothing to do with model...
         alphaLevels <- c(0.9, 0.2)
         colorLevels <- c(WasatchBlue, WasatchGreen)
         thresholdSD <- prediction$thresholdSD

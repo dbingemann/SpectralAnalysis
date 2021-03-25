@@ -66,12 +66,12 @@ getModels <- function(modelNames) {
 # tuning parameters
 getModelParameters <- function() {
     # can be NULL if adjustment panel is not desired
-#    return(NULL)
+    return(NULL)
 #    return( list(Threshold = 0.95) )
     
     # call global parameter function in SIMCA routines
-    simcaParameters <- simcaParameters()
-    return( list(Threshold = 1 - simcaParameters$alphaLevel) )
+#    simcaParameters <- simcaParameters()
+#    return( list(Threshold = 1 - simcaParameters$alphaLevel) )
     
 #    return( list(Threshold = 0.95, Dimension = 2) )
 }
