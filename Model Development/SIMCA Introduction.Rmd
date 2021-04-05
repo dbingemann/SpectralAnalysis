@@ -1,0 +1,2785 @@
+---
+title: "SIMCA - An Introduction"
+author: |
+  | \normalsize \itshape{Dieter Bingemann}
+date: |
+  | \normalsize \upshape{30 March 2021}
+output: 
+     pdf_document: 
+          latex_engine: xelatex
+          fig_caption: true
+          number_sections: true
+classoption: twoside
+fontsize: 10pt
+header-includes:
+     - \usepackage[T1]{fontenc}
+     - \usepackage{fontspec}
+     - \usepackage[sfdefault]{noto}
+     - \usepackage{sansmathfonts}
+     - \usepackage{fancyhdr}
+     - \usepackage{graphicx}
+     - \usepackage{geometry}
+     - \usepackage{afterpage}
+     - \usepackage{xcolor}
+     - \usepackage{sectsty}
+     - \definecolor{Wasatch}{RGB}{47, 84, 150}
+     - \definecolor{RuleColor}{RGB}{66, 153, 107}
+     - \definecolor{Grey}{RGB}{128, 128, 128}
+     - \usepackage{titling}
+     - \pretitle{\begin{center}\huge\color{Wasatch}}
+     - \posttitle{\par\end{center}\normalsize\vskip 0.5em}
+     - \sectionfont{\color{Wasatch}\mdseries\scshape}
+     - \subsectionfont{\color{Wasatch}\mdseries}
+     - \geometry{top=2in, head=65pt, headsep=0.8in}
+     - \pagestyle{fancyplain}
+     - \addtolength{\headwidth}{-0.25in}
+     - \raggedbottom
+     - \fancyfoot{}
+     - \fancyhead{}
+     - \fancyhead[LO]{\fancyplain{\includegraphics[width=8cm]
+            {C:/Users/dbingemann/Pictures//Wasatch_Photonics_gradient_logo_1000px.png}}
+                         {\nouppercase{\leftmark}}}
+     - \fancyhead[RO]{\fancyplain{Wasatch Photonics Rep-Office \\ 
+                    Lahnstrasse 27 \\ 
+                    65195 Wiesbaden \\ 
+                    Germany \\
+                    +49 611 1718 8744}{\includegraphics[width=2cm]
+            {C:/Users/dbingemann/Pictures//Wasatch_Photonics_gradient_logo_1000px.png}}}
+     - \fancyhead[RE]{\fancyplain{}{SIMCA - An Introduction}}
+     - \fancyhead[LE]{\fancyplain{}{\includegraphics[width=2cm]
+            {C:/Users/dbingemann/Pictures//Wasatch_Photonics_gradient_logo_1000px.png}}}
+     - \fancyfoot[RO, LE]{\fancyplain{}{\color{Grey}Page \thepage}}
+     - \fancyfoot[LO, RE]{\fancyplain{}{\color{Grey}Draft}}
+     - \renewcommand{\headrulewidth}{0.4pt}
+     - \renewcommand{\footrulewidth}{0.4pt}
+     - \newcommand{\vect}[1]{\boldsymbol{#1}}
+abstract: We provide an introduction to the SIMCA classification approach in the context of a sample QC using Raman spectroscopy. 
+---
+
+\thispagestyle{plain}
+
+\begin{center}
+\vspace{2cm}
+\includegraphics[height=10cm]{lightBulb.png}
+
+Machine Learning
+\end{center}
+
+\newgeometry{top=1.1in, head=35pt, headsep=0.3in, 
+               bottom=1.1in, footskip=40pt,
+               inner=1.25in, outer=1.25in}
+\renewcommand{\footrulewidth}{2.0pt}
+\renewcommand{\footrule}{\hbox to\headwidth{\color{RuleColor}\leaders\hrule height\footrulewidth\hfill}}
+
+\newpage
+\phantom{X}
+\newpage
+
+\setcounter{tocdepth}{3}
+\tableofcontents
+
+\newpage
+
+
+
+```{r, child = 'C:/Users/dbingemann/Documents/Data Analysis and Reports/Layout Template Settings Include File.Rmd'}
+
+
+```
+
+
+# Executive Summary {-}
+
+We present a brief introduction into the principles of a SIMCA analysis with an application to match Raman samples of an unknown against a set of training samples.
+
+SIMCA is a conceptually simple, but in the application very powerful, classification method for Raman spectra. SIMCA compares an unknown spectrum against a set of models, each of which describing typical spectra and typical variations for a single sample type as acquired (and "to be expected") with the chosen measurement approach.
+
+SIMCA is an acronym for "soft modeling of class analogy". It is based on principal component analysis of the single-sample spectra variation around the mean single-sample spectrum. Typical variations within the class are captured by PCA and compared to the typical variance in these PCA dimensions. All unexpected variations, such as noise, are projected orthogonal to the PCA dimensions, and compared to the typical such orthogonal variations of the training set. Being based on PCA, SIMCA inherits the advantages of PCA, such as predictability and noise rejection.
+
+If the tested new spectrum does not fall too far outside of the typical variations in both in-plane and out-of-plane dimensions, it is considered a class member, otherwise it is rejected as a non-member. One advantage of the SIMCA approach for a QC process is that the spectrum can be tested against multiple models. Unlike some other multi-class classification algorithms, this allows for answers such as "matches no class" or "matches multiple classes". SIMCA can also provide a quality of the match in terms of the percentile of the distance in both in-plane and orthogonal direction. Lastly, being based on collection of single-class models, models can be updated individually or additional models added easily.
+
+SIMCA has grown into a popular method for multi-variate classification. 
+
+
+\newpage
+\phantom{X}
+\newpage
+
+
+
+# Introduction
+
+Raman spectroscopy yields a very detailed and information-rich spectrum that can be used to identify an unknown sample. The vibrational bands leading the peaks in the spectrum are very characteristic for a given molecule and considered a fingerprint of its chemical identity. 
+
+Here we illustrate a popular method used to turn a Raman spectrum of an unknown into an assignment of a sample as a member of a sample group, based on a set of sample spectra that a model has been trained on. This popular method is called SIMCA, an acronym that stands for "soft independent modeling of class analogy".
+
+SIMCA is based on principal component analysis (PCA) of a set of training spectra. As PCA is central to the SIMCA approach, we here first illustrate the PCA analysis before diving into some of the specifics of the SIMCA analysis. We also briefly touch on some of the aspects of model development, such as training, cross-validation, and overfitting. 
+
+
+
+# Principal Component Analysis - A High-Level Overview
+
+Principal Component Analysis captures the main features of a spectral data set. It achieves this by investigating the variances in the data along the different coordinates, here the intensities at specific pixel positions, and explaining the main correlations in decreasing order of importance, one principal component at a time.
+
+
+Principal Component Analysis is a mathematical procedure to separate the information (structure) in a data set from the non-informative noise. In the present application, PCA identifies the most pronounced (and most often observed) features in the collection of spectra (the data set in this application). PCA simply provides a different, the most informative, perspective to the same data.
+
+
+## PCA Process
+
+Mathematically speaking, PCA performs three transformations to the coordinate system, while leaving the data untouched.
+
+* Centering: Place the new coordinate system at the center of the data set.
+
+* Scale: Stretch or compress the coordinate axes scales such that the data has the same range in all directions.
+
+* Rotation: Rotate the centered and scaled coordinate system such that the new (orthogonal) coordinate axes are lined up (in order) with the directions in which the data set extends the furthest. 
+
+![Schematic of Principal Component Analysis (Wikipedia)](GaussianScatterPCA.png)
+
+The second step (scaling) is often skipped if - as in the present application - all of the original coordinate axes measure in the same units, yielding more or less the same data range. Here each pixel corresponds to one original coordinate axis, all pixels measure in the same unit (counts), and for the present spectra all pixels register between zero and 65k counts. 
+
+To give a counter example where scaling is needed: consider a table of data with columns covering very different variables, such as height of a person in meters (on the order of 1-2), their weight in kg (a significantly larger number), milk consumption in liters, and annual income in Euros. All of these variables have very different ranges and units and would need to be scaled prior to PCA. 
+
+## PCA Results
+
+Principal Component Analysis yields three results:
+
+* Loadings: the direction of the *new coordinate axes*, measured in the *original coordinate system*. These are the most characteristic and most often observed features in the data set. In the present case, each loading can be considered a PCA feature spectrum.
+
+* Variance: the variance in the data set that is captured by each principal component, that is, along each new coordinate axis, or loading. 
+
+* Scores: the coordinates of each data point in the new coordinate system. The scores can also be understood as the percentage of each loading making up a single spectrum, or the loading's contribution to a given spectrum.
+
+
+## PCA Projection
+
+Once a principal component analysis has been performed (and the loadings are known), a new measurement can be projected into this new coordinate system. 
+
+Graphically speaking, drawing the new measurement as a single point using the original coordinate system, one can read off the new score value applying the three PCA transformations in order: centering, scaling, and rotation. 
+
+![Projection of a new measurement (for example point #1), measured along the original coordinate axes (x1, x2, x3) into the PCA space (indicated by the plane). The projection itself is indicated by the dashed line](OrthogonalDistance.png) 
+
+However, now the transformations are performed on the new data point, not the coordinate axes, so the inverse transformations are needed: the center values are subtracted, the point coordinates are scaled with the inverse of the original axes scaling, and the rotation is performed on the data point with the transposed rotation matrix.
+
+
+\newpage
+
+# Typical Model Development - A high-level Overview
+
+The matching application is performed as a three-step process:
+
+1. Training of Analysis: Definition of the Model
+
+    a.	Determine PCA parameters (new axes = loadings, training sample scores)
+    b.	Define training spectra cluster in PCA coordinate system
+    
+2. Optimization of the model with additional measurement to tune certain ("meta") parameters of the model. 
+
+    a.	Usually 20 % of the training measurements are set aside before training (80/20 split) and used in these optimizations. 
+    b.	These adjustments optimize the overall performance of the model. 
+    c.	It is important to define up front what is meant with "good" performance (low false positives rate? Low rejection rate? etc.) 
+    
+3.	Using the Model for New Measurements (the actual analysis)
+
+    a.	Finding PCA coordinates (scores) for new measurement to be analyzed (projection) using the model parameters
+    b.	Determination of matching probability for new measurement using existing group definition in the model (for example, confidence ellipse)
+    
+Training (step 1) and optimization (step 2) requires a good number of training and test sample measurements for the sample under a variety of conditions, including some unavoidable interferences and variations in the measurement conditions, such as different users. 
+
+The rule of thumb is to include in the training set as many unavoidable variations as possible for which the model should be tolerant in the final application. While not all interferences can be known ahead of time, the more are included in the training set, the better the chance of tolerating them later. As this is an outlier-type application, the penalty for insufficient training and testing is mainly a higher rate of rejection of in-class samples, which in this use case might be acceptable to some degree.
+
+Both parts of step 1 (training) are computationally expensive and require linear algebra libraries and some memory. Even worse, step 2 requires repeated analysis of step 1 to find the optimum settings. However, steps 1 and 2 are only performed during the initial model development, for example when adding a sample to the library.
+
+In contrast, both parts of step 3 (3a and 3b) are simple matrix multiplications (with a narrow matrix) corresponding to a simple double loop that runs quickly. Step 3 is performed for every new measurement that is to be analyzed.
+
+
+
+\newpage
+
+# Computational Details of PCA
+
+We here describe in more detail the actual computational steps undertaken in the PCA analysis, both during training and in the final application.
+
+
+## PCA as the First Step in the Analysis Sequence
+
+PCA itself only reduces the complexity of the model from $N$ samples of $t$ pixels to $N$ scores in $k$ dimensions, with the dimensionality $k$ typically much smaller than the number of measurement points $t$, reducing the complexity of the analysis. As an added benefit, the information of interest is maintained, while the noise and interferences are pushed into higher principal components, which are typically discarded. Noise is therefore often significantly reduced. PCA itself, however, does not determine a matching probability for the new measurement.
+
+A PCA matching probability itself is determined in a subsequent analysis step, starting with the scores calculated in the initial PCA. The complete process is shown in the schematic diagram.
+
+![Schematic showing the Steps of the Analysis. From left to right: centering, projection, matching probability. Top: Training, Center: Model Parameters, Bottom: Analysis. X: data, X': centered data, S: scores, covar: score covariance for positive samples, Xavg: center vector, L: loadings used, Group: group definition (confidence ellipses), Y: new measurement to be analyzed, Y' centered new measurement, Sy: projected centered new measurement, P: matching probability ](AnalysisSchematic.png)  
+
+
+
+## Initial Training of PCA (Step 1 in Sequence)
+
+In PCA one determines the eigenvalues and eigenvectors (a matrix diagonalization) of the matrix of the covariances between the intensity measurements at different pixel positions (sampled across all measurements). PCA is a straight-forward calculation without any adjustable parameters, in contrast to, for example, a nonlinear fit. The covariance matrix analyzed in PCA is first calculated in a set of nested loops, summing over all samples for each point in the 2D covariance matrix. As the covariance matrix is symmetric, only the upper triangle and the diagonal needs to be calculated.
+
+Libraries exist to determine the eigenvalues and eigenvectors for this covariance matrix, a common method uses singular value decomposition (SVD), a common linear algebra method. As PCA is popular, some libraries actually only require the sample measurements, $\vect{X}$, as the sole input (as a matrix), both the covariance matrix and the diagonalization are determined within the library routine itself. Using a library for this step is highly recommended.
+
+The output provided are the loading vectors, $\vect{L}$, (eigenvectors, the principal components) and the scores for the training sample measurements, $\vect{S}$, (the new coordinates of this data set in the PCA coordinate system). As the PCA analysis is usually "centered" (the new coordinate system starts in the center of the data point cloud), the center vector, $\vect{X}_{avg}$, is also returned. PCA analysis can also be "scaled", however, as all pixels in this application represent the same type of measurements, their scales are comparable, and scaling should be skipped.
+
+
+## Decisions to be made during the Test Phase (Step 2 in Sequence)
+
+Only a subset of $a$ PCA components is used in the final analysis. If too few components are chosen, some characteristic features of the spectra in the data set will be missed. These could be typical interferences, but also characteristics peaks related to the sample. 
+
+If too many components are included, the degree of noise included in the analysis increases, and the performance deteriorates. Worse yet, by including too many components, the model could be trained on some minor characteristics of the data set that are very specific to the training set and will not be reproduced in the field. This effect is called "overfitting". 
+
+The trade-off to be made here is therefore between a more simplistic model (fewer components) that might not perform as well, and a more capable model (including more components) that could be too specific to the training set and will not generalize well. This is the so-called bias-variance trade-off. 
+
+An optimization step is included at this point in the development, using additional measurements, to select the optimum number of components, $a$, in this trade-off. The full model (including the matching probability calculation) is needed for this optimization step. At this point we mainly wanted to point out that only a well-chosen subset of $a$ principal components as determined in step 1 will actually be used in the following analysis step (step 3).
+
+
+## Analysis of New Measurements (Step 3 in Sequence)
+
+In the analysis step, a new measurement $\vect{Y}$ is "projected" into this model PCA coordinate system. Two calculations are performed to find the PCA scores, $\vect{S}_y$, (the new PCA coordinates). 
+
+1.	The new measurement, $\vect{Y}$, is "centered" using the center vector, $\vect{X}_{avg}$, returned in the initial training, yielding the centered measurement, $\vect{Y}'$.
+
+2.	The centered decay, $\vect{Y}'$, is multiplied with $a$ loading vectors, $\vect{L}$, in a matrix multiplication, yielding the scores for the new measurement, $\vect{S}_y$. How many loading vectors (dimensions of the PCA) are used is determined in the optimization (test) step of the model development (step 2).
+
+
+Centering is a simple subtraction inside a single loop over all variables (here: all decay times). In the second step, one calculates the dot product between the centered decay, $\vect{Y}'$, and $a$ PCA loading vectors, $\vect{L}$, in a loop over the $t$ time points in the decay, one dot product for each PCA dimension to be considered. The number of dimensions, $a$, is typically very low (below 15). Overall, these are quick calculations, require little memory and can be performed on any type of hardware.
+
+The output of this projection of a new measurement decay are the scores, $\vect{S}_y$, which corresponds to one number for each of the $a$ PCA components considered in the analysis (as optimized in the "test" phase of the model development). Instead of a large number of $t$ intensity measurements at different pixel positions, one now has a much smaller number of $a$ scores for a limited number of PCA components, with basically the same information content, but much less noise.
+
+## Specific Equations for PCA Analysis
+
+The use of a library to perform PCA is highly recommended. For the interested reader, the details of the math behind the calculations are summarized here. We here follow the notation used in "Introduction to Statistical Analysis in Chemometrics", by Kurt Varmuza and Peter Filzmoser, CRC Press, 2008.
+
+### Training
+
+Principal component analysis separates the data matrix, $\vect{X}$, into a product of two matrices, $\vect{T}$ and $\vect{P}$, such that the most important information in the data is retained in the fewest number of new coordinates (loadings $\vect{P}$) that are orthogonal:
+
+$$
+\vect{X} = \vect{T} \cdot \vect{P}^T
+$$
+
+![PCA represented by a set of matrices. X = data matrix, P = loadings, T = scores, n = number of samples/measurements, m = number of data points per measurement, a = number of principal components retained. (Varmuza)](PCAprinciple.png)
+
+\newpage
+
+The information in the data is considered the data's variance, the new coordinate system $\vect{P}$ is chosen such that the orthogonal coordinate axes are aligned along the direction of maximum variance (in decreasing order). These conditions lead to the following equation for the coordinates $b_{ij}$ for the loading vector $b_i$ written in the original coordinate system of the data matrix:
+
+$$
+\vect{b_i}^T \vect{\Sigma} \vect{b_i}
+$$
+
+with $\vect{\Sigma}$ the population covariance matrix
+
+$$
+\vect{\Sigma} = \frac{1}{n-1} \vect{X'}^T \vect{X'}
+$$
+
+with $\vect{X'}$ the mean-centered data matrix
+
+$$
+\vect{X'} = \vect{X} - \vect{X}_{avg}
+$$
+
+where the average is calculated along the data-point columns across all samples.
+
+Finally, the loading vectors $\vect{b_i}$ are subject to the orthonormality constraint 
+
+$$
+\vect{B}^T \vect{B} = \vect{1}
+$$
+
+Using the Lagrange method to solve this maximization problem under a constraint, one finds the *eigenvalue* equation for the loading vectors:
+
+$$
+\vect{\Sigma} \vect{b_i} = \lambda_i \vect{b_i}
+$$
+
+such that the loading vectors $\vect{b_i}$ are the *eigenvectors* of the population covariance matrix $\vect{\Sigma}$ and the *eigenvalues* the resulting variances along the principal components of the covariance matrix.
+
+Computationally, this eigenvalue problem is commonly solved via *singular value decomposition* (SVD). For the present length of each sample measurement (1024 data points), the covariance matrix is of the maximum size $1024 \times 1024$. The dimension is smaller if there are fewer than 1024 measurements in the training set, which most likely will be the case in most spectroscopic applications. SVD can solve this problem in a fraction of as second on any reasonable hardware. 
+
+As most commonly only the first few principal components are retained, it is beneficial, especially in cases with many variables for each sample, to iteratively compute only the first few, most important, principal components in sequence and abort the calculation after a sufficient number has been determined. The popular NIPALS algorithm follows this approach. This approach should be chosen for cases with thousands of data points per sample measurement and a very low expected number of retained dimensions to speed up the calculations. In the present case this might not be needed.
+
+Either approach (SVD or NIPALS) is computationally expensive and memory-consuming and should be performed on some reasonable hardware, but a typical PC will do just fine. Again, it is highly recommended to use a tested PCA library for this computation.
+
+### PCA results
+
+The results of PCA are
+
+* the centering vector $\vect{X}_{avg}$ of dimension $1 \times m$
+
+* the first $a$ loading vectors $\vect{P}$ of dimension $m \times a$
+
+* the variances $\vect{\nu}$ along those first $a$ principal components, dimension $1 \times a$
+
+* the scores of the original data matrix, $\vect{T}$ along the first $a$ principal components, one set of scores per sample/measurement, of dimension $n \times a$
+
+### Robust PCA
+
+It should be noted that covariances calculated in this traditional manner can be sensitive to outliers. So-called robust methods exist for PCA which are more tolerant to outliers. Such methods need to be employed in outlier detection if the outliers are already part of the initial data set.
+
+In the present application, though, only reasonable measurements should ideally enter the training set, the outliers should not appear until the test phase or the resulting model is applied to field measurements. 
+
+However, if there is a reason to believe that the training measurements would also benefit from a more robust estimate of the covariance (for example, one suspects that the training operator might generate some spectra that are not useful and might distort or even ruin the model results), the adjustment from regular to robust PCA is relatively minor.
+
+In the robust PCA the traditional covariance matrix $\vect{\Sigma}$ 
+
+$$
+\vect{\Sigma} = \frac{1}{n-1} \vect{X'}^T \vect{X'}
+$$
+
+is replaced by a robust estimate, for example using the *minimum covariance determinant* (MCD) estimator for the covariance matrix. MCD provides both a robust estimate for the covariance matrix as well as for the centering vector.
+
+As before, robust PCA also requires one to solve the *eigenvalue* equation
+
+$$
+\vect{\Sigma_{robust}} \vect{b_i} = \lambda_i \vect{b_i}
+$$
+
+now using the robust covariance matrix instead. Again, SVD or NIPALS are the most common methods to solve this equation.
+
+However, the robust calculation of the covariance matrix comes with an adjustable parameter that specifies which percentage of the measurements should be ignored in the covariance calculation. This parameter can be set conservatively high to determine an IQR-like (inter-quartile range) central distribution. However, the deterministic nature of the PCA has some advantages and a manual identification of outliers in the data set before the model training should be considered preferable.
+
+
+### Analysis
+
+In the analysis step a new measurement $\vect{x}$ needs to be projected into the PCA space, that is, its scores need to be calculated. In contrast to the initial determination of the loading vectors, this projection is a simple calculation.
+
+The $a$ scores $\vect{t}$ for the new measurement $\vect{x}$ are simply determined by multiplication with the loading vectors $\vect{P}$ after centering $\vect{x}$ with $\vect{X_{avg}}$
+
+$$
+\vect{x'} = \vect{x} - \vect{X}_{avg}
+$$
+
+
+$$
+\vect{t} = \vect{x'} \cdot \vect{P}
+$$
+
+As $\vect{P}$ only contains $a$ columns, this calculation amounts to a total of just $a$ dot products.
+
+This projection step needed for the analysis can be performed on any level hardware. Neither memory nor processing requirements are high. A microprocessor is certainly capable of this calculation.
+
+
+
+
+# Computational Details for Determination of a Matching Probability
+
+The confidence ellipses used along the PCA "in-plane" dimensions are based on the covariance matrix
+
+$$
+\vect{\Sigma} = \frac{1}{n-1} \vect{X'}^T \vect{X'}
+$$
+
+with $\vect{X'}$ the centered (mean subtracted) data set under consideration (for example all measurements with a specific sample). 
+
+## Calculation of the Robust Covariance Matrix
+
+Covariances as a higher moment of a distribution are sensitive to even just a single outlier, a data point with a significantly higher than normal (in the statistical sense) deviation from the mean. 
+
+*Robust* methods of estimating distribution parameters, such as the center or spread of a distribution from a population of samples, can tolerate a certain fraction of outliers, and still produce a good estimate for the parameters of the underlying distribution. The *minimum covariance determinant* (MCD) method determines the mean and covariance for a smaller subset of the samples, typically around 75% of the original data points, selected such that their covariance matrix has the smallest possible determinant. The setting for this fraction of the measurements to include in the calculation has a substantial influence on the resulting robust covariance matrix. 
+
+A full brute-force search for this minimum would require to determine the covariance matrix for a very large number of possible subsets of the full data set. Several properties of the covariance matrix and the center vector can be used for a substantial acceleration of this search, leading to a *FAST-MCD* algorithm, which is implemented in popular data analysis libraries and software (R, SAS, Matlab, Python's sklearn). For stand-alone code see for example https://wis.kuleuven.be/stat/robust. 
+
+
+##  Calculation of the Mahalanobis Distance
+
+The matching probability in the PCA coordinates is determined from the distance between the new measurement, projected into the PCA coordinate system, that is, the scores of the new measurement, to the center of the cluster of points of the sample in question (the training scores). Here the distance is scaled in terms of the covariance matrix. This scaling is akin to the scaling leading to the $z$ value for univariate distributions
+
+$$
+z = \frac{x - \mu}{\sigma}
+$$
+
+but now for the multi-variate scores, yielding the *Mahalanobis distance*, $d$:
+
+$$
+d^2 = (\vect{t} - \vect{\mu})^T \vect{\Sigma}^{-1} (\vect{t} - \vect{\mu})
+$$
+
+with $\vect{t}$ the new measurement's scores, $\vect{\mu}$ the center of the distribution of the training scores, and $\vect{\Sigma}^{-1}$ the inverse of the covariance matrix. Matrix inversion should be available in any decent linear algebra library. 
+
+These two parameters, $\vect{\Sigma}^{-1}$ and $\vect{\mu}$ are, next to the PCA results (center vector and loadings), the main result of the training phase. Here, the scores determined in the training group PCA are used to determine the center of the scores cluster plus its covariance matrix, which is inverted once and saved as the inverse for any subsequent calculations of the Mahalanobis distance.
+
+Not all matrices can be inverted. Should the values in the data matrix be highly correlated and the covariance matrix be very "thin" in some direction, calculating the inverse will be problematic (which would be akin to division by a very small number). This will most likely not be an issue if the number of dimensions retained, $a$, is to too high, such that the ratio of the largest variance for the first principal component to the smallest variance for the last considered principal component, $a$, is not too large.
+
+
+##  Calculation of the Matching Probability
+
+The square of the Mahalanobis distance, $d^2$, as a sum of $z^2$ values, is distributed according to the $\chi^2_k$ distribution with $k$ degrees of freedom, where $k$ is the number of PCA dimensions retained for the analysis (which we called $a$ earlier, however, the standard symbol for the $\chi^2$ distribution traditionally uses $k$). If the square of the Mahalanobis distance $d^2$ exceeds a threshold at a certain level of confidence (for example, $p$ = 95%), which is given by the corresponding quantile of the $\chi_k^2$ distribution, the new point is not considered a member of the group with the corresponding level of confidence. 
+
+![Cumulative $\chi^2_k$ distribution at various degrees of freedom, $k$. (Wikipedia). ](Chi-square_cdf.png)
+
+In the figure of the cumulative $\chi^2_k$ distribution, $F_k(x)$ corresponds to the level of confidence, $p$, the threshold for acceptance or rejection of the squared Mahalanobis distance, $d^2$. The $x$ value at which the cumulative distribution function, $F_k(x)$, reaches the desired level of confidence, $p$, at the given degrees of freedom, $k$, (that is, number of PCA coordinates) gives this threshold value. For example, for 2 degrees of freedom, and a 95% level of confidence, we find a threshold for $d^2$ of about 6.
+
+There is a chance to reject a member point (that is, a "false negative") with the probability of $\alpha = 1-p$, or in this example 5%. A higher level of confidence leads to a higher cutoff distance, which decreases the chance of rejecting a genuine sample, but in turn increases the chance to accept as members some of those measurements that actually do not belong to the group (a "false positive"). This trade-off between false positives and false negatives needs to be specified (for example through the "cost" of each type of error) to optimize the threshold for the specific application.
+
+We can turn this calculation around, for any given (squared) Mahalanobis distance $d^2$ we can calculate the cumulative probability that this sample is a member of the sample group as $1 - F_k(d^2)$. The closer the new measurement's scores are to the center of the training cluster (as measured in units given by the covariance matrix), the higher this probability will be. This is similar to univariate statistics, where deviations from the mean by more than a few standard deviations are very rare.
+
+
+
+\newpage
+
+
+# Computational Details for Matching Decision using SIMCA Algorithm
+
+Several approaches exist for the assignment of a matching probability given the training and the measurement scores. The discussion above focused on the Mahalanobis distance, which is based on the covariance matrix, using the PCA scores.
+
+The Mahalanobis distance is measured using the scores within the limited PCA space, sometimes called the *score distance*. In contrast, one can also determine the distance along all remaining dimensions of the original data set, which is then termed the *orthogonal distance*, as these additional dimensions are orthogonal to the limited PCA space.
+
+SIMCA (soft independent modeling of class analogy) is a popular approach for group assignments and uses a combination of these two distances to decide on the membership of a new measurement to a given group defined in the training set. Philosophically, it also splits the data set into multiple, independent, single-sample models based on single-sample PCA scores. In addition to the distance within the PCA space (score distance), it however also determines the orthogonal distance and combines the two into one combined decision metric.
+
+SIMCA reduces the variations needed in the training set. The Mahalanobis distance (using the covariance) is calculated entirely in the projected PCA space. Measurement variations that had not been included in the training set might not be captured with the selected number of principal components and could by chance still be projected in the vicinity of the positive training group. Avoiding this problem requires a wide variability in the training data, including both acceptable (positive) and non-acceptable (negative) example measurements, to properly train the PCA. However, not all variations the system might encounter in the field can be simulated during training.
+
+SIMCA, however, uses both the projected score distance as well as the distance in the remainder of the measurement space, making it much more robust against "unknown" variations in the new measurements that the model had not initially been trained for.
+
+## Score Distance
+
+The SIMCA score distance, $SD$, can actually be shown to be identical to, but simpler to calculate than the Mahalanobis distance, $d$, in the more general PCA space, as discussed earlier. Instead of the potentially numerically unstable inverse covariance matrix, $\vect{\Sigma}^{-1}$ it only requires the numerically stable variances along each principal component, $\nu_k$, which are one of the results obtained from PCA, sorted in decreasing magnitude. As one truncates the PCA before the variances become too small, the process is inherently numerically more stable. 
+
+The square of the score distance, $SD^2$, for the new measurement point $i$, is defined as
+
+$$
+SD_i^2 = \sum_{k=1}^a \frac{t_{ik}^2}{\nu_k}
+$$
+
+where the sum extends over all $a$ dimensions kept in PCA space, $t_{ik}$ are the first $a$ scores for point $i$, and $\nu_k$ the variances along the principal components $k$. We therefore sum over a value akin to the square of an univariate $z$-score.
+
+This square of the score distance, $SD^2$, for reasonably distributed data points that are not too far from normal, is expected to follow a $\chi^2_a$ distribution with $a$ degrees of freedom. The $\chi^2_a$ distribution can therefore again be used to determine a cutoff distance squared, signified by $c_{SD}^2$, at a given level of confidence, $p$, as discussed earlier.
+
+$$
+c_{SD} = \sqrt{\chi_{a, p}^2}
+$$
+
+with $p$ the level of confidence desired.
+
+
+## Orthogonal Distance
+
+The orthogonal distance describes the distance between a given point and its projection into the PCA space. For a two-dimensional PCA space and a three-dimensional data space this is visualized in the schematic figure shown earlier and repeated here.
+
+![Three example of data points with different score and orthogonal distances, resp. Point 1: Small score distance, but large orthogonal distance. Point 2: Large score and orthogonal distance. Point 3: Large score distance, but small orthogonal distance. (Varmuza)](OrthogonalDistance.png)
+
+The orthogonal distance for point $i$ is calculated by subtracting the scores for this point, $\vect{t}_i$, in the original coordinate system (that is, projected back from PCA space) from the coordinates of the original data point, $\vect{x}_i$. 
+
+$$
+OD_i^2 =  \left( \vect{x}_i - \vect{t}_i \cdot \vect{P}^T \right)^2
+$$
+
+where $\vect{P}$ are the first $a$ loading vectors arranged in a matrix, and ${}^T$ signifies the transpose.
+
+The scores, $\vect{t}_i$ were determined from the original signal $\vect{x}_i$ with the loadings $\vect{P}$:
+
+$$
+\vect{t}_i = \vect{x}_i \cdot \vect{P}
+$$
+
+We can therefore also combine the two equations:
+
+$$
+OD_i^2 =  \left( \vect{x}_i - \vect{x}_i \vect{P} \vect{P}^T \right)^2
+$$
+
+
+## Expected Distribution for Orthogonal Distance
+
+Unlike for the score distance, no theory predicts the expected distribution for the "orthogonal distance" for a given data set. Therefore a variety of empirical approaches exists.
+
+
+
+### Normal Cube Root of Orthogonal Distance Square
+
+In some papers the cutoff value for the orthogonal distance follows a convention to take a normal distribution as the approximate distribution of the third cube of $OD^2$, that is for $OD^{2/3}$, and to determine the cutoff distance at a given level of confidence, $p$, based on the $z_p$ quantile of the cumulative normal distribution, but calculated using robust estimates for both center and spread of the transformed orthogonal distance, $OD^{2/3}$. 
+
+The center is estimated with the median of the distribution for $OD^{2/3}$, the spread with the median absolute deviation, MAD, for $OD^{2/3}$. 
+
+The median is the data point in the distribution that splits the data set into two equally-sized halves, with 50% of the data points having values larger than the median and 50% with values below the median. This is a robust estimate for the center of the distribution and not affected by outliers.
+
+For the median absolute deviation, MAD, one calculates the absolute deviation of each data point from the median, and determines the median of those values. MAD is also a very robust measure of the spread, for a normal distribution it is related to the standard deviation, $\sigma$, with $\sigma = 1.483 \cdot \rm{MAD}$. 
+
+Using these estimates as parameters for the distribution of $OD^{2/3}$, we can determine the cutoff value, $c_{OD}$ according to this convention as:
+
+$$
+c_{OD} = \left(  \rm{median}(OD^{2/3}) + z_p \cdot \rm{MAD}(OD^{2/3})  \right)^{3/2}
+$$
+
+with $z_p$ the quantile of the cumulative normal distribution corresponding to the level of confidence $p$ (for example, the $p$ = 97.5% quantile is $z_p$ = 1.96). Both the median and the MAD values are determined from the (cubic roots of the squares of the) orthogonal distances of the training set.
+
+Please note, while the score distance $SD$ is scaled by the variances, the orthogonal distance is not scaled and still has a unit (even if the unit is just "counts"). Therefore, the critical distance for the orthogonal distance, $c_{OD}$ depends on the training set, while the critical distance for the score distance, $c_{SD}$, just follows the $\chi^2$ distribution.
+
+
+
+### Using the Mean Variance of Orthogonal Distance
+
+A different approach that works well with the present application uses the orthogonal distance (squared), $OD^2$, scaled by the average orthogonal distance squared, $\langle OD^2 \rangle$:
+
+$$
+v_{OD} = \frac{OD^2}{\langle OD^2 \rangle}
+$$
+
+with $\langle OD^2 \rangle$ the mean value of the orthogonal distance squared across the training set.
+
+This scaled square distance, $v_{OD}$, seems to follow a log normal distribution for the present application:
+
+$$
+\ln v_{OD} \sim \mathcal{N} ( 0, \sigma_v)
+$$
+
+with $\sigma_v$ the standard deviation of the scaled variable $v_{OD}$ across the training set.
+
+The threshold, $c_{OD}$, for a given percentile, $p$, is then determined using the normal distribution's $z_p$ value:
+
+$$
+c_{OD} = \sqrt{\langle OD^2 \rangle \exp(z_p \cdot \sigma_v)}
+$$
+
+
+
+## Combined Distance
+
+SIMCA considers all those points $i$ as members of the group that show a small enough score ($SD_i$) and small enough orthogonal distance ($OD_i$). 
+
+several approaches exist to determine group membership if one of those values falls outside of these boundaries. One such approach is the determination of a combined distance as a weighted average of the two (score and orthogonal) distances. This yields an overall *weighted score value* $d^D$ for each measurement (which is different from the scores determined in the PCA). The two distances are weighted according to the *weighting parameter* $\gamma$.
+
+$$
+d^D(\vect{x}_i) = \gamma \left( \frac{OD_i}{c_{OD}} \right) + (1-\gamma) \left( \frac{SD_i}{c_{SD}} \right)
+$$
+
+The weighting parameter $\gamma$ is a meta-parameter which is adjusted during model optimization (see below), similar to the number of principal components to be kept in the analysis, $a$.
+
+The effect of this weighted average approach is to allow for some trade-off between a score distance and an orthogonal distance, allowing one to pass the threshold as long as the other is still short of the threshold.
+
+
+## Individual Cutoffs Applied
+
+A more conservative approach applies the two threshold values independently. The spectrum is rejected as a non-member if one or both of the thresholds are exceeded. 
+
+In geometric terms, the two approaches (the previous weighted average and this more conservative single-cutoff) can be summarized with the following schematic.
+
+![Comparison of weighted average thresholds and conservative single thresholds approaches to SIMCA. SIMCA will consider all spectra members of the class with distances below the respective threshold line](SIMCAthresholds.png)
+
+Additional approaches exist that combine the two thresholds into various other curves in this 2-dimensional distance space.
+
+\newpage
+
+## SIMCA Model parameters
+
+
+Through model optimization (see below) the training measurements yield the following model parameters:
+
+* number of principal components to be used, $a$
+
+* variances along the principal components, $\vect{\nu}$
+
+* principal component loading vectors, $\vect{P}$
+
+* PCA center vector $\vect{X}_{avg}$
+
+* the optimum levels of confidence for both score and orthogonal distance, $p_{SD}$ and $p_{OD}$
+
+* the critical orthogonal distance, $c_{OD}$ and the critical score distance $c_{SD}$
+
+* weighting parameter for SIMCA, $\gamma$, if a weighted average score is used instead of the conservative approach.
+
+
+
+# Matching Decision - General Approach
+
+
+For any new measurement $\vect{x}_i$ we can thus determine two relative score values, $\frac{SD}{c_{SD}}$ and $\frac{OD}{c_{OD}}$ or a combined score value $d^D(\vect{x}_i)$ for a given group of training measurements (a specific SIMCA model). A score values of less than 1 are considered a match. 
+
+The measurement can also be tested against other models. A measurement could conceivably be found to be a match to multiple models or not a match to any model. In a QC-type application, often the expected sample identity is know and only a single model is tested against.
+
+
+## Expected Sample is Known Ahead of the Analysis
+
+If the identity of the sample is known ahead of the analysis one might only want to determine the matching probability of the new measurement to the corresponding (trained) cluster definition for this expected sample. The matching probability should then exceed a given threshold to be accepted (or the score and orthogonal distances should be below their respective thresholds). 
+
+This threshold is set to balance the need for a low-enough false-positives rate (that is, a low percentage of accepted non-member spectra), a low-enough false-negative rate (that is, wrongly rejected genuine samples), and a low-enough sensitivity to interferences.
+
+These goals can never be optimized simultaneously, there is always a trade-off between these outcomes. It is therefore very important to specify for the given application the cost for each type of failure:
+
+* false positives (accepted non-members)
+* false negatives (rejected genuine members)
+* sensitivity to interferences (leading to additional false assignments of both types of scans)
+
+Once such a cost function is known (or estimated), the trade-off can be optimized for lowest cost.
+
+
+## Expected Sample is not Known Ahead of the Analysis
+
+To decide between alternative possibilities, given a list of individual matching probabilities, a number of decision approaches are possible.
+
+* Always pick the highest probability. The problem with this approach is that some new measurements might not belong to any of the groups to chose from. However, this "best match" approach will always lead to an assignment, as there is always a maximum number in this list of matching probabilities, even if all numbers are small.
+
+* Require that the best matching probability exceeds a threshold. If not, decide that no match was found. While this approach improves the behavior in the "no match" case, it still has erratic behavior if two or more groups have very similar matches above this threshold. In this case, the assignment can be random between these high-probability alternatives. Ideally, such an uncertainty in the assignment should be reflected in the result. 
+
+* For a confident single-sample match also require that the best match probability (a) exceeds a threshold and (b) is much higher than the second best match probability. If instead several equally good assignments are possible, do not decide on a match. This approach seems to deal with the problematic cases discussed above.
+
+
+
+
+\newpage
+
+# Example Analysis with SIMCA
+
+We here perform an example analysis of a set of Raman spectra with SIMCA classification analysis.
+
+## Introduction
+
+Here we investigate the performance of Raman to qualify, or classify cartridges of a solution as an incoming or outgoing QC inspection. 
+
+In an initial series of experiments we have established the feasibility of the general approach to use 830-nm Raman to distinguish samples in their vials with measurements at 2-second integration time using multiple tens of averages.
+
+In this second step of the exploration we determine models for four different products from a set of 60 sample vials measured individually. In this analysis we perform cross-validation of these models with the provided set of 60 spectra for each of the four samples.
+
+
+## Experiment
+
+For these experiments we use a 830-nm Raman system with integrated laser. The sample cartridges are inserted into custom-made sample holders which hold the cartridge securely in the laser focus inside the regular sample holder for very simple insertion. 
+
+![Example Setup for Sample Measurement. Spectrometer in the left back, sample set in the right back, sample holder with custom insert and inserted sample center, matching custom sample holder lid in the front](C:/Users/dbingemann/Pictures/setupCartridges.jpg)
+
+The spectra are measured with 30 averages at 2 second integration time and dark-corrected. A single spectrum is measured for each sample.
+
+## Samples
+
+Four of the approximately 40 different products were selected for this test.
+
+```{r message=FALSE, warning=FALSE}
+
+setwd("~/Data Analysis and Reports/Random Little Measurements/Novo Nordisk Insulin QC/")
+homePath <- getwd()
+
+setwd("Model Data More Darks 24 -Mar-2021/")
+dataPath <- getwd()
+
+setwd(homePath)
+setwd("Actual Model Data/")
+fileName <- "Product Codes.csv"
+productCodes <- read_csv(fileName)
+
+productLookup <- list()
+productLookup[c(productCodes$ProductCode, productCodes$SampleNumber)] <-
+        rep(productCodes$ProductName, 2)
+
+
+kable(productCodes,
+      caption = "Products selected for this test. Shown are the internal product codes and the associated trade names")
+
+```
+
+Two batches are available for each product, with 40 samples each. Out of each batch, 30 samples were selected and measured for the model development, and 10 samples reserved to test the models with new sample vials.
+
+
+## Analysis
+
+We plot the spectra and perform pre-processing using (a) interpolation to a common wavenumber axis (b) taking the first derivative to remove the background and (c) perform SNV scaling to correct for any intensity variations. 
+
+We develop individual one-class SIMCA classification models for each product and check each model using cross-validation with the provided spectra set.
+
+
+
+\newpage
+
+## Data
+
+The spectra recorded for all samples are saved in multiple CSV files.
+
+
+```{r warning=FALSE}
+# global, only set once
+
+# long
+spectraCombined <- data.frame()
+
+# index to run up globally by each scan (no two spectra will have same ID)
+spectrumID <- 0
+
+```
+
+
+```{r warning=FALSE}
+
+setwd(dataPath)
+
+fileNames <- dir(pattern = ".*_NewDark.csv")
+
+numFiles <- length(fileNames)
+
+fileIDs <- seq(numFiles)
+
+```
+
+
+
+
+```{r message=FALSE, warning=FALSE}
+
+setwd(dataPath)
+
+
+# read all files
+for (fileID in fileIDs) {
+  
+  # save specifics for this experiment
+  fileName <- fileNames[fileID]
+  
+  # Example
+  # 5181200_ModelData_A.csv
+
+  experiment <- "Model Development - MultiDarks"
+  
+  # read meta data
+  metaData <- enlightenMetaData(fileName = fileName)
+  spectraInput <- enlightenSpectra(fileName = fileName)
+  spectra <- enlightenGetProcessed(spectraInput)
+  
+  numSpectra <- ncol(spectra)
+  
+  
+  # get sample IDs out of full set using hard coded numbers 
+  sampleID <- metaData$Label
+  productID <- str_extract(sampleID, "^[0-9]+(?=_)")
+  batchID <- str_extract(sampleID, "(?<=_)[AB](?=_)")
+  vialID <- str_extract(sampleID, "(?<=_)[0-9]{2}$")
+  
+  productNames <- unlist(productLookup[productID])
+  
+  spectrometer <- paste("WP", str_extract(metaData$Model, "[0-9]+(?=-)"), sep = "-")
+  
+  # other info from meta data
+  integrationTime <- metaData$`Integration Time`
+  serialNumber <- metaData$`Serial Number`
+  numAvg <- metaData$`Scan Averaging`
+  
+  numPixels <- nrow(spectra)
+  pixels <- seq(numPixels)
+  wavenumbers <- spectraInput$Wavenumber
+  
+  # goes from 1 to N
+  runID <- seq(numSpectra)
+  
+
+  # start with last index, then add runIDs
+  # initial values = 0
+  spectrumID <- spectrumID[length(spectrumID)] + runID
+
+
+  newSpectraCombined <- data.frame(
+                            FileID = fileID,
+                            Experiment = experiment,
+                            FileName = fileName,
+                            SerialNumber = rep(serialNumber, each = numPixels),
+                            Spectrometer = rep(spectrometer, each = numPixels),
+                            SpectrumID = rep(spectrumID, each = numPixels),  
+                            RunID = rep(runID, each = numPixels),  # for one int time
+                            
+                            Sample = rep(sampleID, each = numPixels),
+                            Vial = rep(vialID, each = numPixels),
+                            Batch = rep(batchID, each = numPixels),
+                            Product = rep(productID, each = numPixels),
+                            ProductName = rep(productNames, each = numPixels),
+
+                            IntegrationTime = rep(integrationTime, each = numPixels),
+                            NumAverages = rep(numAvg, each = numPixels),
+                            Pixel = rep(pixels, numSpectra),
+                            Wavenumber = rep(wavenumbers, numSpectra),
+                            Intensity = c(spectra))
+  
+  
+  spectraCombined <- rbind(spectraCombined, newSpectraCombined)
+  
+}
+
+
+```
+
+
+
+
+
+### Data Imported
+
+We find the following data:
+
+```{r, comment = ""}
+
+cat("\nSpectra - Long Format\n")
+str(spectraCombined, width = 75, strict.width = "cut")
+
+
+```
+
+### Experiment Overview
+
+```{r comment = ""}
+
+experiments <- spectraCombined %>%
+  filter(Pixel == 1) %>%
+  select(-c(Pixel, Intensity, Wavenumber))
+
+
+print(table(Product = experiments$ProductName,
+            Experiment = experiments$Experiment),
+      zero.print = ".", digits = 0)
+
+```
+
+
+```{r}
+
+sampleNames <- unique(experiments$ProductName)
+
+enlightenSpectraList <- list()
+
+for (sampleName in sampleNames) {
+  
+  spectraInput <- spectraCombined %>% 
+    filter(ProductName == sampleName) %>% 
+    select(Pixel, Wavenumber, Intensity, Sample) %>% 
+    pivot_wider(names_from = Sample,
+                values_from = Intensity)
+  
+  enlightenSpectraList[[sampleName]] <- spectraInput
+  
+}
+
+
+```
+
+
+
+
+\newpage
+
+# Sample Spectra by Product
+
+We here plot each raw sample spectrum in a separate panel.
+
+
+```{r, warning=FALSE, message=FALSE}
+
+plotRange <- c(250, 2000)
+
+
+spectraPlot <- ggplot(data = spectraCombined, 
+       mapping = aes(x = Wavenumber, y = Intensity/IntegrationTime)) + 
+        geom_line(aes(color = ProductName,
+                      group = SpectrumID), alpha = 0.3) + 
+        WasatchTheme + 
+        ggtitle("All Samples") + 
+        xlab("RAMAN SHIFT (1/cm)") + 
+        ylab("REL. SIGNAL") + 
+        scale_x_continuous(limits = plotRange) +
+        theme(axis.text.x = element_text(size = 10),
+              axis.text.y = element_blank()) +
+        geom_hline(yintercept = 0, linetype = "solid", colour = plotGrey, alpha=0.3) +
+        facet_wrap(.~ProductName, scales = "free_y", ncol = 2) + 
+        guides(color = "none")
+
+
+print(spectraPlot)
+
+
+
+```
+
+Each panel shows the spectra for all samples for each product. 
+
+The spectra contain some substantial background, which we will address in the pre-processing step. 
+
+The Tresiba spectra seem to fall into two groups with different background.
+
+All samples seem to show a few samples with lower background.
+
+
+## Identification of Spectra with Lower Background
+
+We notice a distinct split of the spectra for the sample Tresiba, as well as a few outlier spectra for the other samples. Here we will use the signal at, for example, 750 1/cm as the indicator of the spectrum group.
+
+```{r}
+
+testWavenumber <- 750
+
+wavenumbers <- spectraCombined %>% 
+  filter(SpectrumID == first(SpectrumID)) %>% 
+  pull(Wavenumber)
+
+testPixel <- which.min(abs(wavenumbers - testWavenumber))
+
+groupIndicator <- spectraCombined %>% 
+  group_by(ProductName, SpectrumID, Batch, Vial, Sample, RunID) %>% 
+  filter(Pixel == testPixel) %>% 
+  summarize(Intensity750 = Intensity,
+            .groups = "drop") %>% 
+  ungroup()
+
+
+```
+
+
+
+
+```{r, warning=FALSE, message=FALSE}
+
+
+spectraPlot <- ggplot(data = groupIndicator,
+                      mapping = aes(x = RunID, y = Intensity750)) + 
+        geom_point(aes(color = Batch), alpha = 0.5, size = 2) + 
+        scale_color_manual(values = twoColors) +
+        WasatchTheme + 
+        ggtitle(paste("Signal at", testWavenumber, "1/cm")) + 
+        xlab("VIAL") + 
+        ylab("SIGNAL (cts)") + 
+        geom_hline(yintercept = 0, linetype = "solid", colour = plotGrey, alpha=0.3) + 
+        facet_wrap(.~ProductName)
+
+
+print(spectraPlot)
+
+
+```
+While only "Tresiba" shows the split by Batch, all samples show a lower signal for all vials whose number ends in "1". This most likely is related to the data acquisition and needs more discussion.
+
+
+# Removal of the initial spectrum of each set of ten
+
+For this model development, we will exclude all of these "first of ten" spectra out of caution to not train the models with these artifacts.
+
+```{r}
+spectraCombined <- spectraCombined %>% 
+  filter(RunID %% 10 != 1)
+```
+
+## Experiment Overview
+
+This leaves us with the following number of files:
+
+
+```{r comment = ""}
+
+experiments <- spectraCombined %>%
+  filter(Pixel == 1) %>%
+  select(-c(Pixel, Intensity, Wavenumber))
+
+
+print(table(Product = experiments$ProductName,
+            Experiment = experiments$Experiment),
+      zero.print = ".", digits = 0)
+
+```
+
+
+## Sample Spectra by Product
+
+We here plot each raw sample spectrum in a separate panel.
+
+
+```{r, warning=FALSE, message=FALSE}
+
+plotRange <- c(250, 2000)
+
+
+spectraPlot <- ggplot(data = spectraCombined, 
+       mapping = aes(x = Wavenumber, y = Intensity/IntegrationTime)) + 
+        geom_line(aes(color = ProductName,
+                      group = SpectrumID), alpha = 0.3) + 
+        WasatchTheme + 
+        ggtitle("All Samples") + 
+        xlab("RAMAN SHIFT (1/cm)") + 
+        ylab("REL. SIGNAL") + 
+        scale_x_continuous(limits = plotRange) +
+        theme(axis.text.x = element_text(size = 10),
+              axis.text.y = element_blank()) +
+        geom_hline(yintercept = 0, linetype = "solid", colour = plotGrey, alpha=0.3) +
+        facet_wrap(.~ProductName, scales = "free_y", ncol = 2) + 
+        guides(color = "none")
+
+
+print(spectraPlot)
+
+
+
+```
+
+The odd spectra are removed.
+
+
+```{r}
+
+testWavenumber <- 750
+
+wavenumbers <- spectraCombined %>% 
+  filter(SpectrumID == first(SpectrumID)) %>% 
+  pull(Wavenumber)
+
+testPixel <- which.min(abs(wavenumbers - testWavenumber))
+
+groupIndicator <- spectraCombined %>% 
+  group_by(ProductName, SpectrumID, Batch, Vial, Sample, RunID) %>% 
+  filter(Pixel == testPixel) %>% 
+  summarize(Intensity750 = Intensity,
+            .groups = "drop") %>% 
+  ungroup()
+
+
+```
+
+
+
+
+```{r, warning=FALSE, message=FALSE}
+
+
+spectraPlot <- ggplot(data = groupIndicator,
+                      mapping = aes(x = RunID, y = Intensity750)) + 
+        geom_point(aes(color = Batch), alpha = 0.5, size = 2) + 
+        scale_color_manual(values = twoColors) +
+        WasatchTheme + 
+        ggtitle(paste("Signal at", testWavenumber, "1/cm")) + 
+        xlab("VIAL") + 
+        ylab("SIGNAL (cts)") + 
+        geom_hline(yintercept = 0, linetype = "solid", colour = plotGrey, alpha=0.3) + 
+        facet_wrap(.~ProductName)
+
+
+print(spectraPlot)
+
+
+```
+
+
+\newpage
+
+
+# Pre-Processing
+
+We will use a first derivative to remove the background. This approach has the advantage to be model- and fit-free, that is, it will yield reproducible results unlike an iterative baseline fit.
+
+We also will remove all signal below a minimum wavenumber of 700 1/cm and above 1800 1/cm.
+
+Finally, we scale each derivative using SNV.
+
+
+```{r warning=FALSE, message=FALSE}
+source("~/GitHub/SpectralAnalysis/SIMCAfunctions.R")
+```
+
+
+We use the following pre-processing parameters. 
+
+```{r}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 700,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+str(parameters)
+```
+
+Here the first parameter indicates the spacing for the interpolation to a equidistant wavenumber axis, the next two describe the window to be used for the model development, and the last three are used for the Savitzky Golay derivative. They describe that over a window of 9 pixels the first derivative will be determined from a second order polynomial regression through these 9 points.
+
+## Split Single Experiment Data by Sample
+
+We here prepare individual "Enlighten" type data frames, one for each sample.
+
+```{r}
+
+sampleNames <- unique(experiments$ProductName)
+
+enlightenSpectraList <- list()
+
+for (sampleName in sampleNames) {
+  
+  spectraInput <- spectraCombined %>% 
+    filter(ProductName == sampleName) %>% 
+    select(Pixel, Wavenumber, Intensity, Sample) %>% 
+    pivot_wider(names_from = Sample,
+                values_from = Intensity)
+  
+  enlightenSpectraList[[sampleName]] <- spectraInput
+  
+}
+
+
+```
+
+## Take Derivative
+
+We determine the Savitzky Golay derivative.
+
+```{r warning = FALSE}
+
+
+spectraCombinedDeriv <- data.frame()
+
+wavenumbers <- seq(from = parameters$startWavenumber, 
+                    to = parameters$endWavenumber,
+                    by = parameters$interpSpacing)
+
+
+
+for (sampleName in sampleNames) {
+  
+  spectraInput <- enlightenSpectraList[[sampleName]]
+  
+  metaData <- experiments %>% 
+    filter(ProductName == sampleName)
+  
+  spectra <- preProcessing(spectraInput, parameters)
+  numInterpPixels <- nrow(spectra)
+  numSampleSpectra <- ncol(spectra)
+  spectraNames <- colnames(spectra)
+  
+  newDerivatives <- data.frame(Pixel = rep(seq(numInterpPixels), numSampleSpectra),
+                               Wavenumber = rep(wavenumbers, numSampleSpectra),
+                               Sample = rep(spectraNames, each = numInterpPixels),
+                               Derivative = c(spectra)) %>% 
+    left_join(metaData, by = "Sample")
+  
+  spectraCombinedDeriv <- rbind(spectraCombinedDeriv, newDerivatives)                           
+}
+
+
+```
+
+
+
+
+## Preprocessed Spectra by Sample
+
+We here plot each sample in a separate panel, but all combined in one plot.
+
+
+```{r, warning=FALSE, message=FALSE}
+
+
+plotRange <- c(300, 2000)
+
+spectraPlot <- ggplot(data = subset(spectraCombinedDeriv,
+                                    Wavenumber > plotRange[1] & 
+                                      Wavenumber < plotRange[2]),
+                      mapping = aes(x = Wavenumber, y = Derivative)) + 
+        geom_line(aes(color = ProductName, group = SpectrumID), alpha = 0.3) + 
+        WasatchTheme + 
+        ggtitle("All Samples") + 
+        xlab("WAVENUMBER (1/cm)") + 
+        ylab("DERIV. SIGNAL (cts/pixel)") + 
+        theme(axis.text.x = element_text(size = 10),
+              axis.text.y = element_blank()) +
+        geom_hline(yintercept = 0, linetype = "solid", colour = plotGrey, alpha=0.3) +
+        facet_wrap(.~ProductName, scales = "free_y", ncol = 2) + 
+        guides(color = "none", linetype = "none")
+
+
+print(spectraPlot)
+
+
+```
+
+The spectra appear sufficiently different by sample and sufficiently similar within each group. We still see some separation into two groups in the "Tresiba" product, despite the removal of a major peak below 700 1/cm.
+
+
+
+# SIMCA model for one-class outlier detection
+
+We next develop a SIMCA model for each sample with the goal to discriminate against out-of-class sample spectra, and only accept the in-class sample spectra. We will use the pictured SNV-normalized derivative spectra as our spectral data set.
+
+## Random Train/Test Split
+
+For the method development, we here mix the remaining 54 spectra and split them randomly 2:1 into train and test sets.
+
+
+```{r warning=FALSE}
+
+trainTestLabels <- c("Train", "Test")
+
+set.seed(1234567)
+
+numRepeats <- length(unique(spectraCombined$RunID))
+testSamples <- round(numRepeats / 3)
+
+# third time is a charm
+experiments <- experiments %>%
+  group_by(Product) %>% 
+  mutate(TrainTest = factor(ifelse(row_number() %in% sample(x = n(), size = testSamples),
+                            "Test", "Train"), levels = trainTestLabels)) %>% 
+  ungroup()
+         
+
+```
+
+```{r comment="  "}
+# check
+
+table(Product = experiments$ProductName,
+      Split = experiments$TrainTest)
+```
+
+
+```{r}
+
+
+enlightenSpectraListTrain <- list()
+enlightenSpectraListTest <- list()
+
+testSampleNames <- experiments %>% 
+  filter(TrainTest == "Test") %>% 
+  pull(Sample)
+
+
+
+for (sampleName in sampleNames) {
+  
+  # data frame as input - like enlighten
+  spectraInput <- enlightenSpectraList[[sampleName]]
+  
+  columnNames <- names(spectraInput)
+  testSamples <- which(columnNames %in% testSampleNames) 
+  xAxisColumns <- grep(pattern = "_", x = columnNames, invert = TRUE)
+  
+  enlightenSpectraListTest[[sampleName]] <- spectraInput[, c(xAxisColumns, testSamples)]
+  enlightenSpectraListTrain[[sampleName]] <- spectraInput[, -testSamples]
+
+  
+}
+
+
+```
+
+
+
+# SIMCA Classification
+
+
+SIMCA (Soft Independent Modeling of Class Analogy) is a simple, but popular one-class classification method mainly based on PCA. The general idea is to generate multiple PCA models, one for each class of samples (hence "Independent Modeling") and to test the closeness of any new measurements to each one of those one-class models in turn. 
+
+To judge membership, two distances are used, the first being the distance within the PCA space, the so-called score distance, the second the distance perpendicular to the limited-dimensionality PCA space, the so-called orthogonal distance (as the distance is measured orthogonal to the PCA space). 
+
+Thresholds for both distances are set based on the acceptable false positive and false negative rates, leading to a decision about membership of a new measurement to any given SIMCA class. The result can be a membership in one, multiple, or none of the classes.
+
+
+## A SIMCA Example - Model for a Single Sample
+
+We here determine a SIMCA model for one of the samples as a demonstration. 
+
+Here we determine the example model with 2 principal components and a threshold of $\alpha = 0.0001$ for a demonstration of the method. In cross validation this level will be optimized later to achieve the lowest number of false positives and false negatives, as dictated by the application needs.
+
+
+## Load Sample Measurements
+
+We pick the sample measurements.
+
+```{r warning=FALSE, message=FALSE, comment = ""}
+
+
+# define individual SIMCA models by spectrometer and sample
+sampleCode <- sampleNames[1]
+
+# use Enlighten spectra format
+trainSpectraInput <- enlightenSpectraListTrain[[sampleCode]]
+
+testSpectraInput <- enlightenSpectraListTest[[sampleCode]]
+
+```
+
+Here we determine the model for sample `r sampleCode`.
+
+
+## Use own SIMCA routines
+
+We here start with "Enlighten Format" spectra as input for both train and test, pre-process both with the same parameter setting, find a model with the train spectra and predict with SIMCA using the test spectra.
+
+```{r warning=FALSE}
+
+pickComponents <- 2
+alphaLevel <- 0.0001
+
+```
+
+
+The settings are `r pickComponents` components and an alpha level of `r alphaLevel`.
+
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 700,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+
+# alpha level now part of the model
+simcaModel <- analysisSIMCA(trainSpectraInput, 
+                            SIMCAcomp = pickComponents, 
+                            preProcessingParameters = parameters,
+                            alphaLevel = alphaLevel)
+
+# use model alpha level
+simcaPrediction <- predictSIMCA(simcaModel, 
+                                testSpectraInput)
+
+# use model alpha
+plotSIMCA(simcaModel = simcaModel, prediction = simcaPrediction, printPlot = FALSE)
+
+```
+
+The larger the number of PCA components used in the definition of the model, the more flexible the model will get and the higher the chance that it will overfit on the training set - and reject the test set. For the present model complexity (2 components) we see a significant overlap of the training and the test spectra. A higher number of components leads to an increasing separation of the train and test sets, indicative of overfitting of the model to the training set.
+
+
+## Check Prediction Percentiles
+
+We also calculate the percentiles (probabilities) for the test samples.
+
+```{r}
+percentileTable <- data.frame(Sample = names(simcaPrediction$scorePercentile),
+                              ScorePercentile = simcaPrediction$scorePercentile,
+                              OrthogonalPercentile = simcaPrediction$orthogonalPercentile) %>% 
+  mutate(pScore = 1 - ScorePercentile,
+         pOrthogonal = 1 - OrthogonalPercentile)
+
+# kable(percentileTable, digits = 4, row.names = FALSE,
+#       caption = "Table of the percentiles for score and orthogonal distances")
+
+
+```
+
+
+```{r warning=FALSE}
+
+fullRange <- c(1e-6, 1)
+
+ggplot(data = percentileTable,
+                     mapping = aes(x = pScore, y = pOrthogonal)) + 
+      geom_point(color = WasatchGreen, alpha = 0.4, size = 3) + 
+      WasatchTheme + 
+      ggtitle(paste("SIMCA Results")) + 
+      xlab(paste("Score p-Value")) + 
+      ylab(paste("Orthogonal p-Value")) +
+      theme(aspect.ratio = 1) +
+      geom_abline(slope = 1) +
+#      coord_cartesian(xlim = fullRange, ylim = fullRange) +
+      scale_x_log10() +
+      scale_y_log10()
+  
+
+```
+
+We notice that the p value is much larger in the "score" direction, most spectra have a higher percentile (relative distance) in the orthogonal direction.
+
+We will summarize the model performance using the mean value of the log of the smaller of these two p values.
+
+
+\newpage
+
+# Meta Parameter Tuning
+
+We know step through several model complexities with the training set, determine the training p-Value, then use the model to predict the test set and determine the test p value. We employ cross-validation, that is, reserve a portion of the training set to check the model performance.
+
+
+```{r}
+source("~/GitHub/SpectralAnalysis/crossValidation.R")
+```
+
+
+```{r warning=FALSE, message=FALSE, comment = ""}
+
+
+# define individual SIMCA models by spectrometer and sample
+sampleCode <- sampleNames[1]
+
+# use Enlighten spectra format
+trainSpectraInput <- enlightenSpectraListTrain[[sampleCode]]
+
+testSpectraInput <- enlightenSpectraListTest[[sampleCode]]
+
+```
+
+The sample is `r sampleCode`.
+
+```{r warning=FALSE}
+
+maxComponents <- 8
+alphaLevel <- 0.0001  
+
+```
+
+
+The settings are `r maxComponents` max components and an alpha level of `r alphaLevel`.
+
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 700,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+```{r warning = FALSE}
+
+# this will be the loop...
+
+meanLogPvalues <- data.frame()
+
+allPvalues <- data.frame()
+
+for (numComp in seq(maxComponents)) {
+  
+  # alpha now part of the model
+  simcaModel <- analysisSIMCA(trainSpectraInput, 
+                              SIMCAcomp = numComp, 
+                              preProcessingParameters = parameters,
+                              alphaLevel = alphaLevel)
+  
+  pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                          model = simcaModel)
+  
+  rejectTrain <- pTrain < alphaLevel
+  
+  # get alpha from model
+  simcaPrediction <- predictSIMCA(simcaModel, 
+                                  testSpectraInput)
+  
+  pTest <- analysisCV(testSpectraInput, simcaModel)
+  
+  rejectTest <- pTest < alphaLevel
+
+  # get alpha from model
+  simcaPlot <- plotSIMCA(simcaModel = simcaModel, prediction = simcaPrediction, 
+                         printPlot = FALSE) + 
+                ggtitle("SIMCA Distances", 
+                        subtitle = paste(numComp, "Components"))
+  
+  print(simcaPlot)
+  
+  pValues <- data.frame(NumComp = numComp,
+                        pValue = c(pTrain, pTest),
+                        Rejected = c(rejectTrain, rejectTest),
+                        Type = c(rep("Train", length(pTrain)),
+                                 rep("Test", length(pTest))))
+  
+  allPvalues <- rbind(allPvalues, pValues)
+
+  meanLogPvalue <- pValues %>% 
+    group_by(Type, NumComp) %>% 
+    summarize(MeanLogPvalue = mean(log10(pValue)),
+              MeanPvalue = 10^MeanLogPvalue,
+              NumRejected = sum(Rejected),
+              .groups = "drop") %>% 
+    ungroup()
+
+  meanLogPvalues <- rbind(meanLogPvalues, meanLogPvalue)
+  
+}
+
+
+```
+
+We can clearly notice the separation of train and test set with increasing model complexity due to overfitting.
+
+
+## Result of the Fits
+
+We plot the overall p-value for each sample and the average across the train/test sets.
+
+```{r warning=FALSE}
+
+
+ggplot(data = meanLogPvalues,
+        mapping = aes(x = NumComp, y = MeanPvalue)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      geom_jitter(data = allPvalues,
+                  mapping = aes(x = NumComp, y = pValue, color = Type),
+                  size = 1, alpha = 0.2, width = 0.2) +
+      scale_color_manual(values = twoColors) +
+      WasatchTheme + 
+      ggtitle(paste("SIMCA p-Values - Sample", sampleCode)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("p-Value")) +
+      scale_y_log10()
+
+
+```
+
+The performance on the test set deteriorates with increasing model complexity, especially with more than 4 components.
+
+
+```{r warning=FALSE}
+
+
+ggplot(data = meanLogPvalues,
+        mapping = aes(x = NumComp, y = NumRejected)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      scale_color_manual(values = twoColors) +
+      WasatchTheme + 
+      ggtitle(paste("SIMCA False Negatives - Sample", sampleCode)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("Num False Negatives")) +
+      geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+
+```
+
+Due to the onset of overfitting, the number of incorrectly rejected test samples increases for more than 4 components.
+
+
+## Repeat with all Samples
+
+The last plots would be interesting to see for all samples.
+
+```{r warning=FALSE}
+
+maxComponents <- 8
+alphaLevel <- 0.0001  
+
+```
+
+The settings are `r maxComponents` max components and an alpha level of `r alphaLevel`.
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 700,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+
+```{r warning=FALSE, message=FALSE}
+
+
+falseAssignments <- data.frame()
+
+for (sampleCode in sampleNames) {
+
+  # use Enlighten spectra format
+  trainSpectraInput <- enlightenSpectraListTrain[[sampleCode]]
+
+  testSpectraInput <- enlightenSpectraListTest[[sampleCode]]
+  
+  
+      
+    # this will be the loop...
+    
+    for (numComp in seq(maxComponents)) {
+      
+      # Train
+      
+      # alpha now part of the model
+      simcaModel <- analysisSIMCA(trainSpectraInput, 
+                                  SIMCAcomp = numComp, 
+                                  preProcessingParameters = parameters,
+                                  alphaLevel = alphaLevel)
+      
+      pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                              model = simcaModel)
+      
+      rejectTrain <- pTrain < alphaLevel
+      
+      # Test
+      
+      # alpha now in model
+      simcaPrediction <- predictSIMCA(simcaModel, 
+                                      testSpectraInput)
+      
+      pTest <- analysisCV(testSpectraInput, simcaModel)
+      
+      rejectTest <- pTest < alphaLevel
+    
+      # Combine Train/Test
+      pValues <- data.frame(NumComp = numComp,
+                            Sample = sampleCode,
+                            pValue = c(pTrain, pTest),
+                            Result = c(rejectTrain, rejectTest),
+                            Type = c(rep("Train", length(pTrain)),
+                                     rep("Test", length(pTest))))
+
+      
+      # False Positives?
+      pOtherSamples <- data.frame()
+      
+      for (otherSample in sampleNames) {
+        
+        if (otherSample != sampleCode) {
+            # skip "own" spectra
+            spectraInput <- enlightenSpectraList[[otherSample]]
+            pOthers <- analysisCV(spectraInput, simcaModel)
+            acceptedOthers <- pOthers > alphaLevel
+            
+            pOtherSamples <- rbind(pOtherSamples, data.frame(
+                            NumComp = numComp,
+                            Sample = otherSample,
+                            pValue = pOthers,
+                            Result = acceptedOthers,
+                            Type = "Other"))
+        }
+      }
+      
+      
+      falseAssignment <- rbind(pValues, pOtherSamples) %>% 
+        mutate(Model = sampleCode) %>% 
+        group_by(Type, NumComp, Sample, Model) %>% 
+        summarize(NumFalse = sum(Result),
+                  .groups = "drop") %>% 
+        ungroup()
+
+    
+      falseAssignments <- rbind(falseAssignments, falseAssignment)
+      
+    }
+
+
+}
+
+
+```
+
+
+
+```{r warning=FALSE,message=FALSE}
+
+for (sampleCode in sampleNames) {
+  
+
+    falseAssignmentPlot <- ggplot(data = subset(falseAssignments, Model == sampleCode),
+        mapping = aes(x = NumComp, y = NumFalse)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      WasatchTheme + 
+      ggtitle(paste("False Assign. - Model", sampleCode, "- alpha =", alphaLevel)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("Num False Assignments")) +
+      scale_y_continuous(limits = c(0, 12), n.breaks = 4) +
+      geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+    print(falseAssignmentPlot)
+  
+}
+    
+```
+
+For all samples we notice a similar trend. At four or more components the model starts to overfit the training set.
+
+
+### Discussion
+
+It seems like for alpha = 0.0001 the "other sample" danger is small. The biggest issue is the rejection of many test samples if the training is too specific (overfitting) with 4 or more components.
+
+This seems to point towards 2 components and a low alpha value.
+
+
+# Cross Validation
+
+The previous approach was akin to a single run of a 3-fold random CV.
+
+Next we repeatedly split the training set $n$-fold and determine a model from all training samples, excluding the fraction $1/n$ of the samples set aside for cross validation.
+
+Repeating this split can occur in three ways:
+
+* Split in $n$ groups in sequence. This yields $n$ sequential $n$-fold CV runs.
+
+* Randomly pick samples, but make sure every sample is used only once. This also yields $n$ but now random $n$-fold CV runs
+
+* Repeatedly randomly pick $1/n^{th}$ of the samples for cross validation. The number of repeat runs is not limited in this case.
+
+We will pick the latter approach here for now. We might expand the CV routines to accommodate the other options at a latter time.
+
+To develop the method, we will pick a single sample for now.
+
+Please note, the results stem from a 'single model' test, that is a single model was picked and all sample (train, test, other) spectra used as input. This is not a multi-model prediction, but a single-model QC result (does sample X fit in with model Y ?). 
+
+
+```{r warning=FALSE}
+
+maxComponents <- 8
+alphaLevel <- 0.0001  
+
+```
+
+The settings are `r maxComponents` max components and an alpha level of `r alphaLevel`.
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 700,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+```{r}
+
+set.seed(1234567)
+
+# one sample for now
+sampleCode <- sampleNames[1]
+
+# in how many parts to split the data set into train and CV-test
+numFolds <- 5
+
+# how often to randomly pick CV-test samples from the set - in total 
+numRepeats <- 30
+
+
+
+# get spectrum labels
+spectrumLabels <- experiments %>% 
+  filter(ProductName == sampleCode) %>% 
+  pull(Sample)
+
+
+# spectra for this sample
+spectraInput <- enlightenSpectraList[[sampleCode]]
+columnNames <- names(spectraInput)
+xAxisColumns <- grep(pattern = "_", x = columnNames, invert = TRUE)
+spectraNames <- columnNames[-xAxisColumns]
+
+numSampleSpectra <- length(spectraNames)
+numTestSpectra <- round(numSampleSpectra / numFolds)
+
+spectraInputSample <- spectraInput
+
+# where to collect the results
+falseAssignments <- data.frame()
+
+for (repeatID in seq(numRepeats)) {
+  # repeated random CV
+  
+    # single n-fold random CV
+    
+    # pick test samples and split spectra
+    testSampleNames <- sample(x = spectrumLabels, numTestSpectra)
+    testSampleCols <- which(columnNames %in% testSampleNames)
+    
+    testSpectraInput <- spectraInputSample[, c(xAxisColumns, testSampleCols)]
+    trainSpectraInput <- spectraInputSample[, -testSampleCols]
+
+    
+          
+    # this will be the loop through the num components...
+    
+    for (numComp in seq(maxComponents)) {
+      
+      # Train
+      
+      # alpha now in model
+      simcaModel <- analysisSIMCA(trainSpectraInput, 
+                                  SIMCAcomp = numComp, 
+                                  preProcessingParameters = parameters,
+                                  alphaLevel = alphaLevel)
+      
+      pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                              model = simcaModel)
+      
+      rejectTrain <- pTrain < alphaLevel
+      
+      # Test
+      
+      # alpha now in model
+      simcaPrediction <- predictSIMCA(simcaModel, 
+                                      testSpectraInput)
+      
+      pTest <- analysisCV(testSpectraInput, simcaModel)
+      
+      rejectTest <- pTest < alphaLevel
+    
+      # Combine Train/Test
+      pValues <- data.frame(NumComp = numComp,
+                            Sample = sampleCode,
+                            pValue = c(pTrain, pTest),
+                            Result = c(rejectTrain, rejectTest),
+                            Type = c(rep("Train", length(pTrain)),
+                                     rep("Test", length(pTest))))
+
+      
+      # False Positives?
+      pOtherSamples <- data.frame()
+      
+      for (otherSample in sampleNames) {
+        
+        if (otherSample != sampleCode) {
+            # skip "own" spectra
+            spectraInput <- enlightenSpectraList[[otherSample]]
+            pOthers <- analysisCV(spectraInput, simcaModel)
+            acceptedOthers <- pOthers > alphaLevel
+            
+            pOtherSamples <- rbind(pOtherSamples, data.frame(
+                            NumComp = numComp,
+                            Sample = otherSample,
+                            pValue = pOthers,
+                            Result = acceptedOthers,
+                            Type = "Other"))
+        }
+      }
+      
+      
+      falseAssignment <- rbind(pValues, pOtherSamples) %>% 
+        mutate(Model = sampleCode,
+               RepeatID = repeatID) %>% 
+        group_by(Type, NumComp, Sample, Model, RepeatID) %>% 
+        summarize(NumFalse = sum(Result),
+                  NumTrue = sum(!Result),
+                  .groups = "drop") %>% 
+        ungroup()
+
+    
+      falseAssignments <- rbind(falseAssignments, falseAssignment)
+      
+    }
+  
+}
+
+
+
+```
+
+
+For this sample we find the following number of false assignments at each repeat:
+
+
+```{r warning=FALSE,message=FALSE}
+
+for (repeatID in seq(numRepeats)) {
+  
+
+    falseAssignmentPlot <- ggplot(data = subset(falseAssignments, RepeatID == repeatID),
+        mapping = aes(x = NumComp, y = NumFalse)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      WasatchTheme + 
+      ggtitle(paste("False Assign. - Repeat", repeatID, "- alpha =", alphaLevel)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("Num False Assignments")) +
+      scale_y_continuous(limits = c(0, 5)) +
+      geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+    print(falseAssignmentPlot)
+  
+}
+    
+```
+
+
+On average, this means:
+
+```{r warning=FALSE,message=FALSE}
+
+falseAssignments %>% 
+  group_by(Type, NumComp) %>% 
+  summarize(MeanFalse = mean(NumFalse)) %>% 
+
+ggplot(mapping = aes(x = NumComp, y = MeanFalse)) + 
+      geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+      geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+      WasatchTheme + 
+      ggtitle(paste("False Assign. - Sample", sampleCode, "- alpha =", alphaLevel)) + 
+      xlab(paste("Number of Components")) + 
+      ylab(paste("Avg False Assignments")) +
+      geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+
+
+```
+
+Next we analyze the results in terms of a confusion matrix, based on this 'single model' test, that is, each sample was only tested against one model, not a collection of models. For this analysis we disregard the 'training' samples, and only consider the 'test' and 'other' categories.
+
+```{r warning=FALSE, message = FALSE}
+
+confusionMatrix <- falseAssignments %>% 
+  filter(Type != "Train") %>% 
+  group_by(NumComp, Sample, Model) %>% 
+  summarize(TotalIncorrect = sum(NumFalse),
+            TotalCorrect = sum(NumTrue),
+            Total = sum(NumFalse) + sum(NumTrue)) %>% 
+  rename(Assignment = Model)
+
+diagonal <- confusionMatrix %>% 
+  filter(Sample == Assignment)
+
+noneAssignment <- diagonal %>% 
+  mutate(Assignment = "None",
+         TotalCorrect = TotalIncorrect,
+         TotalIncorrect = 0,
+         TotalAssigned = TotalCorrect)
+
+correctDiagonal <- diagonal %>% 
+  mutate(TotalIncorrect = 0) %>% 
+  mutate(TotalAssigned = TotalCorrect)
+
+
+sampleLevels <- unique(confusionMatrix$Sample)
+invSampleLevels <- rev(sampleLevels[order(sampleLevels)])
+
+confusionMatrix <- confusionMatrix %>% 
+  filter(Sample != Assignment) %>% 
+  mutate(TotalAssigned = TotalIncorrect) %>% 
+  rbind(correctDiagonal, noneAssignment) %>% 
+  arrange(NumComp, Sample, Assignment) %>% 
+  mutate(Ratio = TotalAssigned / Total) %>% 
+  mutate(Sample = factor(Sample, levels = invSampleLevels))
+  
+
+confusionPlot <- ggplot(data = confusionMatrix, 
+       mapping = aes(y =  Sample, x = Assignment, z = Ratio)) + 
+    geom_tile(aes(fill = Ratio), alpha = 0.6) + 
+    scale_fill_gradient(low = "#FFFFFF", high = WasatchGreen) +
+    WasatchTheme + 
+    ggtitle(paste("MODEL PREDICTION")) + 
+    ylab("SAMPLE") + 
+    xlab("ASSIGNMENT") +
+    guides(fill = "none") + 
+#    theme(aspect.ratio = 0.8) +
+    theme(panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 10),
+          axis.text.y = element_text(size = 10)) + 
+    facet_wrap(.~NumComp, ncol = 4)
+    
+     
+  print(confusionPlot)
+
+    
+
+
+```
+
+
+Here we only tested one model, so the assignment variable has two possibilities: match for that model or no match ('None'), but we tested this one model with all sample types.
+
+
+## Repeated Random CV for all Samples
+
+We now run this repeated random train/test split (CV) for all samples.
+
+
+```{r warning=FALSE}
+
+maxComponents <- 8
+alphaLevel <- 1e-5  
+
+```
+
+The settings are `r maxComponents` max components and an alpha level of `r alphaLevel`.
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 700,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+```{r}
+
+set.seed(1234567)
+
+
+# in how many parts to split the data set into train and CV-test
+numFolds <- 5
+
+# how often to randomly pick CV-test samples from the set - in total 
+numRepeats <- 20
+
+
+# where to collect the results
+falseAssignments <- data.frame()
+
+
+for (sampleCode in sampleNames) {
+
+    
+    # get spectrum labels
+    spectrumLabels <- experiments %>% 
+      filter(ProductName == sampleCode) %>% 
+      pull(Sample)
+    
+    
+    # spectra for this sample
+    spectraInput <- enlightenSpectraList[[sampleCode]]
+    columnNames <- names(spectraInput)
+    xAxisColumns <- grep(pattern = "_", x = columnNames, invert = TRUE)
+    spectraNames <- columnNames[-xAxisColumns]
+    
+    numSampleSpectra <- length(spectraNames)
+    numTestSpectra <- round(numSampleSpectra / numFolds)
+    
+    spectraInputSample <- spectraInput
+    
+    
+    for (repeatID in seq(numRepeats)) {
+      # repeated random CV
+      
+        # single n-fold random CV
+        
+        # pick test samples and split spectra
+        testSampleNames <- sample(x = spectrumLabels, numTestSpectra)
+        testSampleCols <- which(columnNames %in% testSampleNames)
+        
+        testSpectraInput <- spectraInputSample[, c(xAxisColumns, testSampleCols)]
+        trainSpectraInput <- spectraInputSample[, -testSampleCols]
+    
+        
+              
+        # this will be the loop through the num components...
+        
+        for (numComp in seq(maxComponents)) {
+          
+          # Train
+          
+          # alpha now in model
+          simcaModel <- analysisSIMCA(trainSpectraInput, 
+                                      SIMCAcomp = numComp, 
+                                      preProcessingParameters = parameters,
+                                      alphaLevel = alphaLevel)
+          
+          pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                                  model = simcaModel)
+          
+          rejectTrain <- pTrain < alphaLevel
+          
+          # Test
+          
+          # alpha now in model
+          simcaPrediction <- predictSIMCA(simcaModel, 
+                                          testSpectraInput)
+          
+          pTest <- analysisCV(testSpectraInput, simcaModel)
+          
+          rejectTest <- pTest < alphaLevel
+        
+          # Combine Train/Test
+          pValues <- data.frame(NumComp = numComp,
+                                Sample = sampleCode,
+                                pValue = c(pTrain, pTest),
+                                Result = c(rejectTrain, rejectTest),
+                                Type = c(rep("Train", length(pTrain)),
+                                         rep("Test", length(pTest))))
+    
+          
+          # False Positives?
+          pOtherSamples <- data.frame()
+          
+          for (otherSample in sampleNames) {
+            
+            if (otherSample != sampleCode) {
+                # skip "own" spectra
+                spectraInput <- enlightenSpectraList[[otherSample]]
+                pOthers <- analysisCV(spectraInput, simcaModel)
+                acceptedOthers <- pOthers > alphaLevel
+                
+                pOtherSamples <- rbind(pOtherSamples, data.frame(
+                                NumComp = numComp,
+                                Sample = otherSample,
+                                pValue = pOthers,
+                                Result = acceptedOthers,
+                                Type = "Other"))
+            }
+          }
+          
+          
+          falseAssignment <- rbind(pValues, pOtherSamples) %>% 
+            mutate(Model = sampleCode,
+                   RepeatID = repeatID) %>% 
+            group_by(Type, NumComp, Sample, Model, RepeatID) %>% 
+            summarize(NumFalse = sum(Result),
+                      NumTrue = sum(!Result),
+                      .groups = "drop") %>% 
+            ungroup()
+    
+        
+          falseAssignments <- rbind(falseAssignments, falseAssignment)
+          
+        }
+      
+    }
+    
+}
+
+```
+
+
+On average, we now find for all samples:
+
+
+
+```{r warning=FALSE,message=FALSE}
+
+avgFalseAssignments <- falseAssignments %>% 
+  group_by(Type, NumComp, Model) %>% 
+  summarize(MeanFalse = mean(NumFalse)) %>% 
+  ungroup()
+
+for (sampleName in sampleNames) {
+
+  avgPlot <- ggplot(data = subset(avgFalseAssignments, Model == sampleName),
+                    mapping = aes(x = NumComp, y = MeanFalse)) + 
+        geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+        geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+        WasatchTheme + 
+        ggtitle(paste("False Assign. - Sample", sampleName, "- alpha =", alphaLevel)) + 
+        xlab(paste("Number of Components")) + 
+        ylab(paste("Avg False Assignments")) +
+        coord_cartesian(ylim = c(0, 3)) +
+        geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4)
+
+  print(avgPlot)
+  
+}
+
+
+
+```
+
+Here the total number of samples of each type (in each run) were for reference:
+
+* Train - 48 (4/5 of 60)
+* Test - 12 (1/5 of 60)
+* Other - 180 (3 other samples out of 4)
+
+The combination of a confidence level of 1e-5 with 2 PCA components as the meta parameters leads to a good performance for all products.
+
+### Confusion Matrix
+
+Again, we analyze the results in terms of a confusion matrix, based on this 'single model' test, that is, each sample was only tested against one model, not a collection of models. For this analysis we disregard the 'training' samples, and only consider the 'test' and 'other' categories.
+
+```{r warning=FALSE, message = FALSE}
+
+confusionMatrix <- falseAssignments %>% 
+  filter(Type != "Train") %>% 
+  group_by(NumComp, Sample, Model) %>% 
+  summarize(TotalIncorrect = sum(NumFalse),
+            TotalCorrect = sum(NumTrue),
+            Total = sum(NumFalse) + sum(NumTrue)) %>% 
+  rename(Assignment = Model)
+
+diagonal <- confusionMatrix %>% 
+  filter(Sample == Assignment)
+
+noneAssignment <- diagonal %>% 
+  mutate(Assignment = "None",
+         TotalCorrect = TotalIncorrect,
+         TotalIncorrect = 0,
+         TotalAssigned = TotalCorrect)
+
+correctDiagonal <- diagonal %>% 
+  mutate(TotalIncorrect = 0) %>% 
+  mutate(TotalAssigned = TotalCorrect)
+
+
+sampleLevels <- unique(confusionMatrix$Sample)
+sampleLevels <- sampleLevels[order(sampleLevels)]
+invSampleLevels <- rev(sampleLevels)
+
+confusionMatrix <- confusionMatrix %>% 
+  filter(Sample != Assignment) %>% 
+  mutate(TotalAssigned = TotalIncorrect) %>% 
+  rbind(correctDiagonal, noneAssignment) %>% 
+  arrange(NumComp, Sample, Assignment) %>% 
+  mutate(Ratio = TotalAssigned / Total) %>% 
+  mutate(Sample = factor(Sample, levels = invSampleLevels)) %>% 
+  mutate(Assignment = factor(Assignment, levels = c(sampleLevels, "None")))
+  
+
+confusionPlot <- ggplot(data = confusionMatrix, 
+       mapping = aes(y =  Sample, x = Assignment, z = Ratio)) + 
+    geom_tile(aes(fill = Ratio), alpha = 0.6) + 
+    scale_fill_gradient(low = "#FFFFFF", high = WasatchGreen) +
+    WasatchTheme + 
+    ggtitle(paste("MODEL RESULTS")) + 
+    ylab("SAMPLE") + 
+    xlab("ASSIGNMENT") +
+#    guides(fill = "none") + 
+    theme(aspect.ratio = 0.8) +
+    theme(panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 10, angle = 90, hjust = 1, vjust = 0.5),
+          axis.text.y = element_text(size = 10)) + 
+    facet_wrap(.~NumComp, ncol = 4, labeller = label_both)
+    
+     
+  print(confusionPlot)
+
+    
+
+
+```
+
+To focus on the unexpected results, we ignore the diagonal and just plot the 'unexpected' results.
+
+
+```{r warning=FALSE, message = FALSE}
+
+
+confusionPlot <- ggplot(data = subset(confusionMatrix, 
+                              as.character(Sample) != as.character(Assignment)), 
+       mapping = aes(y =  Sample, x = Assignment, z = Ratio)) + 
+    geom_tile(aes(fill = Ratio), alpha = 0.6) + 
+    scale_fill_gradient(low = "#FFFFFF", high = WasatchColorHex) +
+    WasatchTheme + 
+    ggtitle(paste("MODEL RESULTS")) + 
+    ylab("SAMPLE") + 
+    xlab("ASSIGNMENT") +
+#    guides(fill = "none") + 
+    theme(aspect.ratio = 0.8) +
+    theme(panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 10, angle = 90, hjust = 1, vjust = 0.5),
+          axis.text.y = element_text(size = 10)) + 
+    facet_wrap(.~NumComp, ncol = 4, labeller = label_both)
+    
+     
+  print(confusionPlot)
+
+    
+
+
+```
+
+
+\newpage
+
+# Repated CV for different confidence thresholds
+
+We next will also rotate through different alpha levels in addition to the variation in the number of components for all spectra.
+
+
+```{r  warning=FALSE}
+
+# preprocessing settings
+# parameters fro preprocessing: first 3 = SG, last one = min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 700,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+```
+
+The preprocessing is done with
+
+```{r comment = ""}
+str(parameters)
+```
+
+
+```{r}
+
+# this is a quintuple loop
+# use with caution
+
+# 4 samples
+# 6 alphas
+# 20 repeats
+# 8 components
+# 3 "other" samples for false positive tests
+# 60 spectra each
+# = 691,200 predictions
+# for 3840 models
+
+#
+# get a coffee...
+#
+
+set.seed(1234567)
+
+maxComponents <- 8
+
+# roatate throgh different alphas
+alphaLevels <- c(3e-3, 1e-3, 3e-4, 1e-4, 3e-5, 1e-5, 3e-6, 1e-6, 3e-7)  
+
+
+# in how many parts to split the data set into train and CV-test
+numFolds <- 5
+
+# how often to randomly pick CV-test samples from the set - in total 
+numRepeats <- 20
+
+
+# where to collect the results
+falseAssignments <- data.frame()
+
+
+for (sampleCode in sampleNames) {
+
+    
+    # get spectrum labels
+    spectrumLabels <- experiments %>% 
+      filter(ProductName == sampleCode) %>% 
+      pull(Sample)
+    
+    
+    # spectra for this sample
+    spectraInput <- enlightenSpectraList[[sampleCode]]
+    columnNames <- names(spectraInput)
+    xAxisColumns <- grep(pattern = "_", x = columnNames, invert = TRUE)
+    spectraNames <- columnNames[-xAxisColumns]
+    
+    numSampleSpectra <- length(spectraNames)
+    numTestSpectra <- round(numSampleSpectra / numFolds)
+    
+    spectraInputSample <- spectraInput
+    
+    
+    for (alphaLevel in alphaLevels) {
+        
+        for (repeatID in seq(numRepeats)) {
+          # repeated random CV
+          
+            # single n-fold random CV
+            
+            # pick test samples and split spectra
+            testSampleNames <- sample(x = spectrumLabels, numTestSpectra)
+            testSampleCols <- which(columnNames %in% testSampleNames)
+            
+            testSpectraInput <- spectraInputSample[, c(xAxisColumns, testSampleCols)]
+            trainSpectraInput <- spectraInputSample[, -testSampleCols]
+        
+            
+                  
+            # this will be the loop through the num components...
+            
+            for (numComp in seq(maxComponents)) {
+              
+              # Train
+              
+              # alpha now in model
+              simcaModel <- analysisSIMCA(trainSpectraInput, 
+                                          SIMCAcomp = numComp, 
+                                          preProcessingParameters = parameters,
+                                          alphaLevel = alphaLevel)
+              
+              pTrain <- analysisCV(spectraInput = trainSpectraInput,
+                                      model = simcaModel)
+              
+              rejectTrain <- pTrain < alphaLevel
+              
+              # Test
+              
+              # alpha now in model
+              simcaPrediction <- predictSIMCA(simcaModel, 
+                                              testSpectraInput)
+              
+              pTest <- analysisCV(testSpectraInput, simcaModel)
+              
+              rejectTest <- pTest < alphaLevel
+            
+              # Combine Train/Test
+              pValues <- data.frame(NumComp = numComp,
+                                    Sample = sampleCode,
+                                    pValue = c(pTrain, pTest),
+                                    Result = c(rejectTrain, rejectTest),
+                                    Type = c(rep("Train", length(pTrain)),
+                                             rep("Test", length(pTest))))
+        
+              
+              # False Positives?
+              pOtherSamples <- data.frame()
+              
+              for (otherSample in sampleNames) {
+                
+                if (otherSample != sampleCode) {
+                    # skip "own" spectra
+                    spectraInput <- enlightenSpectraList[[otherSample]]
+                    pOthers <- analysisCV(spectraInput, simcaModel)
+                    acceptedOthers <- pOthers > alphaLevel
+                    
+                    pOtherSamples <- rbind(pOtherSamples, data.frame(
+                                    NumComp = numComp,
+                                    Sample = otherSample,
+                                    pValue = pOthers,
+                                    Result = acceptedOthers,
+                                    Type = "Other"))
+                }
+                
+              } # other sample
+              
+              
+              falseAssignment <- rbind(pValues, pOtherSamples) %>% 
+                mutate(Model = sampleCode,
+                       RepeatID = repeatID,
+                       Alpha = alphaLevel) %>% 
+                group_by(Type, NumComp, Sample, Model, RepeatID, Alpha) %>% 
+                summarize(NumFalse = sum(Result),
+                          NumTrue = sum(!Result),
+                          .groups = "drop") %>% 
+                ungroup()
+        
+            
+              falseAssignments <- rbind(falseAssignments, falseAssignment)
+              
+            } # num comp
+          
+        }  # repeat ID
+      
+    } # alpha
+    
+} # sample
+
+```
+
+
+On average, we now find for all samples:
+
+
+
+```{r warning=FALSE,message=FALSE}
+
+avgFalseAssignments <- falseAssignments %>% 
+  group_by(Type, NumComp, Model, Alpha) %>% 
+  summarize(MeanFalse = mean(NumFalse)) %>% 
+  ungroup()
+
+
+
+for (sampleName in sampleNames) {
+
+  avgPlot <- ggplot(data = subset(avgFalseAssignments, Model == sampleName),
+                    mapping = aes(x = NumComp, y = MeanFalse)) + 
+        geom_point(aes(color = Type, group = Type), alpha = 0.5, size = 3) +
+        geom_line(aes(color = Type, group = Type), alpha = 0.5, size = 1) +
+        WasatchTheme + 
+        ggtitle(paste("Avg. False Assignments -", sampleName)) + 
+        xlab(paste("Number of Components")) + 
+        ylab(paste("Avg False Assignments")) +
+        coord_cartesian(ylim = c(0, 4)) +
+        geom_hline(yintercept = 0, color = plotGrey, alpha = 0.4) + 
+        facet_wrap(.~Alpha, ncol = 3, labeller = label_both) + 
+        theme(axis.text = element_text(size = 10))
+
+  print(avgPlot)
+  
+}
+
+
+
+```
+
+
+Again, the number of false assignments is relative to the total number of samples:
+
+* Train - 48 (4/5 of 60)
+* Test - 12 (1/5 of 60)
+* Other - 180 (3 other samples of 60 each)
+
+If we just print the wrong assignments for reasonable model complexities (up to 3):
+
+```{r}
+avgFalseAssignments %>% 
+  filter(MeanFalse > 0) %>% 
+  filter(NumComp < 4) %>% 
+  
+kable(caption = "False Assignments by Model, Type of Test, and Model Parameters",
+      align = "r", digits = c(NA, 1, NA, 6, 2))
+```
+
+We do not notice any "Other" entries here, so no 'other' sample was mis-identified with any of these settings.
+
+We will keep the number of components at 2 here. This is part looking at the plots and part trying to avoid a high model complexity out of pre-caution.
+
+
+Otherwise we see the expected onset of overfitting with increasing number of components, leading to a larger number of test samples being rejected, unless the alpha value is lowered.
+
+For 2 components, we plot the confusion matrix:
+
+
+
+```{r warning=FALSE, message = FALSE}
+
+pickComponents <- 2
+
+confusionMatrix <- falseAssignments %>% 
+  filter(Type != "Train") %>% 
+  filter(NumComp == pickComponents) %>% 
+  group_by(Alpha, Sample, Model) %>% 
+  summarize(TotalIncorrect = sum(NumFalse),
+            TotalCorrect = sum(NumTrue),
+            Total = sum(NumFalse) + sum(NumTrue)) %>% 
+  rename(Assignment = Model)
+
+diagonal <- confusionMatrix %>% 
+  filter(Sample == Assignment)
+
+noneAssignment <- diagonal %>% 
+  mutate(Assignment = "None",
+         TotalCorrect = TotalIncorrect,
+         TotalIncorrect = 0,
+         TotalAssigned = TotalCorrect)
+
+correctDiagonal <- diagonal %>% 
+  mutate(TotalIncorrect = 0) %>% 
+  mutate(TotalAssigned = TotalCorrect)
+
+
+sampleLevels <- unique(confusionMatrix$Sample)
+sampleLevels <- sampleLevels[order(sampleLevels)]
+invSampleLevels <- rev(sampleLevels)
+
+confusionMatrix <- confusionMatrix %>% 
+  filter(Sample != Assignment) %>% 
+  mutate(TotalAssigned = TotalIncorrect) %>% 
+  rbind(correctDiagonal, noneAssignment) %>% 
+  arrange(Alpha, Sample, Assignment) %>% 
+  mutate(Ratio = TotalAssigned / Total) %>% 
+  mutate(Sample = factor(Sample, levels = invSampleLevels)) %>% 
+  mutate(Assignment = factor(Assignment, levels = c(sampleLevels, "None")))
+  
+
+confusionPlot <- ggplot(data = confusionMatrix, 
+       mapping = aes(y =  Sample, x = Assignment, z = Ratio)) + 
+    geom_tile(aes(fill = Ratio), alpha = 0.6) + 
+    scale_fill_gradient(low = "#FFFFFF", high = WasatchGreen) +
+    WasatchTheme + 
+    ggtitle(paste("MODEL RESULTS")) + 
+    ylab("SAMPLE") + 
+    xlab("ASSIGNMENT") +
+#    guides(fill = "none") + 
+    theme(aspect.ratio = 0.8) +
+    theme(panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 10, angle = 90, hjust = 1, vjust = 0.5),
+          axis.text.y = element_text(size = 10)) + 
+    facet_wrap(.~Alpha, ncol = 3, labeller = label_both)
+    
+     
+  print(confusionPlot)
+
+    
+
+
+```
+
+Leaving out the diagonal elements to focus on the unexpected results, we find:
+
+```{r warning=FALSE, message = FALSE}
+
+
+confusionPlot <- ggplot(data = subset(confusionMatrix, 
+                              as.character(Sample) != as.character(Assignment)), 
+       mapping = aes(y =  Sample, x = Assignment, z = Ratio)) + 
+    geom_tile(aes(fill = Ratio), alpha = 0.6) + 
+    scale_fill_gradient(low = "#FFFFFF", high = WasatchColorHex) +
+    WasatchTheme + 
+    ggtitle(paste("MODEL RESULTS")) + 
+    ylab("SAMPLE") + 
+    xlab("ASSIGNMENT") +
+#    guides(fill = "none") + 
+    theme(aspect.ratio = 0.8) +
+    theme(panel.grid.minor = element_blank(),
+          axis.text.x = element_text(size = 10, angle = 90, hjust = 1, vjust = 0.5),
+          axis.text.y = element_text(size = 10)) + 
+    facet_wrap(.~Alpha, ncol = 3, labeller = label_both)
+    
+     
+  print(confusionPlot)
+
+    
+
+
+```
+
+We might be able to use the same alpha level for all samples with about 1e-6 - the CV does not clearly identify a "best" parameter set, a wide range of parameter sets performs well here.
+
+
+\newpage
+
+# Example Models
+
+We here illustrate the model performance using the original 2/1 random train/test split and this set of parameters (2 components and alpha = 1e-6).
+
+```{r}
+
+writeEnlighten <- function(spectraInput, baseFileName){
+  
+  #
+  # minimal 'single' Enlighten file - empty line, then data
+  #
+  
+  numCols <- length(spectraInput)
+  dataLabel <- "_"
+  dataCols <- grep(pattern = dataLabel, x = names(spectraInput))
+  numXcols <- numCols - length(dataCols)
+  nonDataCols <- seq(numXcols)
+  
+  # remove extension
+  baseFileName <- str_remove(baseFileName, "\\.[a-zA-Z0-9]+$")
+  
+  # write individual files
+  for (colIndex in dataCols) {
+    
+    fileName <- paste0(baseFileName, "-", colIndex - numXcols, ".csv")
+
+    # 'header' plus empty line
+    writeLines("Minimal R Export\n", fileName)
+
+    singleSpectrum <- spectraInput[, c(nonDataCols, colIndex)]
+    names(singleSpectrum)[numXcols + 1] <- "Processed"
+    
+    write_csv(singleSpectrum, fileName, 
+              append = TRUE, col_names = TRUE)
+  }
+  
+}
+```
+
+
+```{r warning=FALSE, message=FALSE, comment = ""}
+
+
+# write new models
+# DO NOT WRITE THESE MODELS - LIMITED SET
+writeModels <- FALSE
+
+# also write test spectra
+writeTest <- FALSE
+
+
+# model parameters
+pickComponents <- 2
+alphaLevel <- 1e-6
+
+
+# preprocessing settings
+# parameters for preprocessing: interpolation, SG, min wavenumber
+parameters <- list(interpSpacing = 1,
+                   startWavenumber = 700,
+                   endWavenumber = 1800,
+                   windowHalfWidth = 4,
+                   derivOrder = 1,
+                   polynomialSG = 2)
+
+resultsTable <- data.frame()
+
+
+for (sampleName in sampleNames) {
+  
+  # use Enlighten spectra format
+  trainSpectraInput <- enlightenSpectraListTrain[[sampleName]]
+ 
+  # alpha evel now in model
+  simcaModel <- analysisSIMCA(trainSpectraInput, 
+                              SIMCAcomp = pickComponents, 
+                              preProcessingParameters = parameters,
+                              alphaLevel = alphaLevel)
+  
+  if (writeModels) {
+    # save
+    setwd(homePath)
+    setwd("Models")
+  
+    fileName <- paste0("Sample-", sampleName)
+    saveSIMCA(simcaModel, fileName)
+  }
+  
+  
+  # test all others
+  wrongAccepted <- 0
+  wrongTested <- 0
+  for (wrongSample in sampleNames) {
+    if (wrongSample != sampleName) {
+      # actual sample
+      testSpectraInput <- enlightenSpectraList[[wrongSample]]
+
+      # alpha now in model
+      simcaPrediction <- predictSIMCA(simcaModel, 
+                                      testSpectraInput)
+      
+      wrongAccepted <- wrongAccepted + sum(simcaPrediction$member)
+      wrongTested <- wrongTested + length(simcaPrediction$member)
+    }
+  }
+  
+  # actual sample
+  testSpectraInput <- enlightenSpectraListTest[[sampleName]]
+  
+  
+  if (writeTest) {
+    # write copy for front end test
+    setwd(homePath)
+    setwd("TestSpectra")
+    baseFileName <- paste0("TestSpectrum-", sampleName)
+    writeEnlighten(testSpectraInput, baseFileName)
+  }
+  
+  
+
+  simcaPrediction <- predictSIMCA(simcaModel, 
+                                  testSpectraInput)
+  
+  numRejected <- sum(! simcaPrediction$member)
+  numTested <- length(simcaPrediction$member)
+  
+  simcaPlot <- plotSIMCA(simcaModel = simcaModel, prediction = simcaPrediction, 
+                         printPlot = FALSE)
+  simcaPlot <- simcaPlot + ggtitle(paste("SIMCA", sampleName, sep = " - "), 
+                    subtitle = paste("False Neg:", numRejected, "of", numTested,
+                                     " --- ",
+                                    "False Pos:", wrongAccepted, "of", wrongTested))
+  print(simcaPlot)
+  
+  resultsTable <- rbind(resultsTable, data.frame(Sample = sampleName,
+                                                 FalseNegative = numRejected,
+                                                 ActualPositive = numTested,
+                                                 FalsePositive = wrongAccepted,
+                                                 ActualNegative = wrongTested))
+  
+}
+```
+
+
+
+
